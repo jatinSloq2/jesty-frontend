@@ -26,6 +26,15 @@ import { formatDaySeparator, initials } from "@/lib/utils";
 
 const STATUS_OPTIONS: Conversation["status"][] = ["open", "pending", "closed"];
 
+// Appends a message only if its _id isn't already present. Both the REST
+// response from a send/upload call AND the "message:new" socket broadcast
+// can deliver the same message, so every insertion path must go through
+// this to avoid duplicate keys / duplicated bubbles.
+function appendMessage(prev: Message[], message: Message) {
+  if (prev.some((m) => m._id === message._id)) return prev;
+  return [...prev, { ...message, reactions: message.reactions ?? [] }];
+}
+
 export function ChatPane({ conversationId }: { conversationId: string }) {
   const { socket } = useAuth();
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -47,7 +56,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
     Promise.all([conversationsApi.get(conversationId), conversationsApi.messages(conversationId, 1, 50)])
       .then(([conv, msgs]) => {
         setConversation(conv);
-        setMessages(msgs.data);
+        setMessages((msgs.data ?? []).map((m) => ({ ...m, reactions: m.reactions ?? [] })));
         conversationsApi.markRead(conversationId).catch(() => undefined);
       })
       .finally(() => setLoading(false));
@@ -66,7 +75,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
     if (!socket) return;
     const onNewMessage = (message: Message) => {
       if (message.conversation !== conversationId) return;
-      setMessages((prev) => (prev.some((m) => m._id === message._id) ? prev : [...prev, message]));
+      setMessages((prev) => appendMessage(prev, message));
     };
     const onStatus = (status: { messageId: string; status: Message["status"] }) => {
       setMessages((prev) => prev.map((m) => (m._id === status.messageId ? { ...m, status: status.status } : m)));
@@ -78,8 +87,8 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
             ? {
                 ...m,
                 reactions: payload.emoji
-                  ? [...m.reactions.filter((r) => r.waId !== payload.from), { emoji: payload.emoji, waId: payload.from, reactedAt: new Date().toISOString() }]
-                  : m.reactions.filter((r) => r.waId !== payload.from),
+                  ? [...(m.reactions ?? []).filter((r) => r.waId !== payload.from), { emoji: payload.emoji, waId: payload.from, reactedAt: new Date().toISOString() }]
+                  : (m.reactions ?? []).filter((r) => r.waId !== payload.from),
               }
             : m
         )
@@ -103,7 +112,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
         text,
         replyToMessageId: replyTo?._id,
       });
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => appendMessage(prev, message));
       setReplyTo(null);
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : "Message failed to send");
@@ -113,7 +122,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   const sendFile = async (file: File, type: "image" | "video" | "audio" | "document") => {
     try {
       const message = await messagesApi.upload({ conversationId, type, file, replyToMessageId: replyTo?._id ?? undefined });
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => appendMessage(prev, message));
       setReplyTo(null);
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : "Upload failed");
@@ -123,7 +132,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   const sendTemplate = async (templateName: string, languageCode: string) => {
     try {
       const message = await messagesApi.send({ conversationId, type: "template", templateName, languageCode });
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => appendMessage(prev, message));
       toast.success("Template sent");
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : "Template failed to send");
@@ -165,7 +174,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
     );
   }
 
-  const name = conversation.contact?.name || conversation.contact?.phoneNumber || conversation.waId;
+  const name = conversation.contact?.name || conversation.contact?.phoneNumber || conversation.waId || "Unknown";
 
   let lastDay = "";
 

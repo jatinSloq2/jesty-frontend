@@ -21,10 +21,11 @@ export function ContactDrawer({
   onOpenChange: (open: boolean) => void;
 }) {
   const contact = conversation.contact;
-  const [blocked, setBlocked] = useState(contact.isBlocked);
+  const [blocked, setBlocked] = useState(contact?.isBlocked ?? false);
   const [pending, setPending] = useState(false);
 
   const toggleBlock = async () => {
+    if (!contact) return;
     setPending(true);
     try {
       await contactsApi.setBlocked(contact._id, !blocked);
@@ -36,6 +37,22 @@ export function ContactDrawer({
       setPending(false);
     }
   };
+
+  if (!contact) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Contact info</SheetTitle>
+          </SheetHeader>
+          <p className="p-6 text-sm text-muted-foreground">No contact details available.</p>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  const tags = contact.tags ?? [];
+  const groups = contact.groups ?? [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -58,8 +75,8 @@ export function ContactDrawer({
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h3>
             <div className="flex flex-wrap gap-1.5">
-              {contact.tags.length === 0 && <p className="text-sm text-muted-foreground">No tags</p>}
-              {contact.tags.map((t) => (
+              {tags.length === 0 && <p className="text-sm text-muted-foreground">No tags</p>}
+              {tags.map((t) => (
                 <Badge key={t} variant="secondary">
                   {t}
                 </Badge>
@@ -70,8 +87,8 @@ export function ContactDrawer({
           <section>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Groups</h3>
             <div className="flex flex-wrap gap-1.5">
-              {contact.groups.length === 0 && <p className="text-sm text-muted-foreground">No groups</p>}
-              {contact.groups.map((g) => (
+              {groups.length === 0 && <p className="text-sm text-muted-foreground">No groups</p>}
+              {groups.map((g) => (
                 <Badge key={g} variant="outline">
                   {g}
                 </Badge>
