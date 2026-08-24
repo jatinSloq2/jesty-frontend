@@ -61,6 +61,7 @@ export function MessageBubble({
 }) {
   const outgoing = message.direction === "outbound";
   const [showReactions, setShowReactions] = useState(false);
+  const reactions = message.reactions ?? [];
 
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
     gsap.from(el, {
@@ -125,7 +126,7 @@ export function MessageBubble({
               <DropdownMenuItem onSelect={onForward}>
                 <Forward className="h-3.5 w-3.5" /> Forward
               </DropdownMenuItem>
-              {message.reactions.length > 0 && <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>}
+              {reactions.length > 0 && <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -169,9 +170,9 @@ export function MessageBubble({
             {outgoing && <StatusTicks status={message.status} />}
           </div>
 
-          {message.reactions.length > 0 && (
+          {reactions.length > 0 && (
             <div className="absolute -bottom-3 right-1 flex items-center border border-border bg-card px-1 text-xs shadow-sm">
-              {[...new Set(message.reactions.map((r) => r.emoji))].join(" ")}
+              {[...new Set(reactions.map((r) => r.emoji))].join(" ")}
             </div>
           )}
         </div>
