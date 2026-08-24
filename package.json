@@ -1,0 +1,52 @@
+{
+  "name": "jesty-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tailwindcss": "latest",
+    "@tailwindcss/postcss": "latest",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "tailwind-merge": "latest",
+    "tw-animate-css": "latest",
+    "next-themes": "latest",
+    "lucide-react": "latest",
+    "gsap": "latest",
+    "socket.io-client": "latest",
+    "zustand": "latest",
+    "@radix-ui/react-dialog": "latest",
+    "@radix-ui/react-dropdown-menu": "latest",
+    "@radix-ui/react-tabs": "latest",
+    "@radix-ui/react-switch": "latest",
+    "@radix-ui/react-avatar": "latest",
+    "@radix-ui/react-tooltip": "latest",
+    "@radix-ui/react-scroll-area": "latest",
+    "@radix-ui/react-select": "latest",
+    "@radix-ui/react-label": "latest",
+    "@radix-ui/react-slot": "latest",
+    "@radix-ui/react-popover": "latest",
+    "@radix-ui/react-checkbox": "latest",
+    "react-hook-form": "latest",
+    "@hookform/resolvers": "latest",
+    "zod": "latest",
+    "sonner": "latest",
+    "date-fns": "latest"
+  },
+  "devDependencies": {
+    "eslint": "latest",
+    "eslint-config-next": "latest"
+  }
+}

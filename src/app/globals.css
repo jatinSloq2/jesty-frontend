@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ---------------------------------------------------------------------- */
+/* Jesty design tokens — orange re-skin of the WhatsApp palette.          */
+/* Every corner in this app is sharp. --radius stays 0 everywhere; do not */
+/* reintroduce rounded-* utilities on Jesty-specific components.          */
+/* ---------------------------------------------------------------------- */
+
+:root {
+  --radius: 0px;
+
+  --brand: #ff7a00;
+  --brand-strong: #e8690a;
+  --brand-foreground: #ffffff;
+
+  /* Clean white base — orange is the ONLY accent color in this app. No warm
+     cream/off-white shading anywhere; panels are true white, separation
+     comes from a crisp neutral-gray border, not a tint. */
+  --bg-app: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-chat: #fafafa;
+  --bubble-out: #fff1e2;
+  --bubble-in: #ffffff;
+
+  --text-primary: #111111;
+  --text-secondary: #6b6b6b;
+  --border: #e6e6e6;
+  --unread-badge: #ff7a00;
+  --tick-sent: #8a8a8a;
+  --tick-read: #3fa4f4;
+  --online-dot: #3fa34d;
+  --danger: #d64545;
+
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --card: var(--bg-panel);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-panel);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #f3f3f3;
+  --secondary-foreground: var(--text-primary);
+  --muted: #f3f3f3;
+  --muted-foreground: var(--text-secondary);
+  --accent: #fff1e2;
+  --accent-foreground: var(--brand-strong);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --input: var(--border);
+  --ring: var(--brand);
+}
+
+.dark {
+  --brand: #ff8a2b;
+  --brand-strong: #ff7a00;
+  --brand-foreground: #1b1200;
+
+  --bg-app: #0b0b0c;
+  --bg-panel: #151515;
+  --bg-chat: #0e0e0f;
+  --bubble-out: #3a2a17;
+  --bubble-in: #1e1e1f;
+
+  --text-primary: #f2f2f2;
+  --text-secondary: #9a9a9a;
+  --border: #262626;
+  --unread-badge: #ff7a00;
+  --tick-sent: #8a8a8a;
+  --tick-read: #53b7ff;
+  --online-dot: #3fa34d;
+  --danger: #e5605b;
+
+  --background: var(--bg-app);
+  --foreground: var(--text-primary);
+  --card: var(--bg-panel);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-panel);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #1e1e1f;
+  --secondary-foreground: var(--text-primary);
+  --muted: #1e1e1f;
+  --muted-foreground: var(--text-secondary);
+  --accent: #2a1d0f;
+  --accent-foreground: var(--brand);
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --input: var(--border);
+  --ring: var(--brand);
+}
+
+@theme inline {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-bg-app: var(--bg-app);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-chat: var(--bg-chat);
+  --color-bubble-out: var(--bubble-out);
+  --color-bubble-in: var(--bubble-in);
+  --color-text-secondary: var(--text-secondary);
+  --color-unread-badge: var(--unread-badge);
+  --color-tick-sent: var(--tick-sent);
+  --color-tick-read: var(--tick-read);
+  --color-online-dot: var(--online-dot);
+
+  --font-sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  /* Bumped one step up the type scale from the original 14px base — bigger,
+     more confident text throughout. */
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every element in Jesty is sharp-cornered by design — belt-and-suspenders
+   in case a dependency's default stylesheet sneaks a radius in. */
+button,
+input,
+textarea,
+select,
+[class*="rounded"] {
+  border-radius: 0 !important;
+}
+
+/* ...except avatars and the unread badge pill, which stay circular on
+   purpose (WhatsApp convention) — opt back in explicitly. */
+.avatar-circle,
+.pill-circle {
+  border-radius: 9999px !important;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
