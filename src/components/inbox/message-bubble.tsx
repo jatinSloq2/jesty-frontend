@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import gsap from "gsap";
-import { Check, CheckCheck, Clock, CornerUpLeft, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User } from "lucide-react";
+import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User } from "lucide-react";
+import { toast } from "sonner";
 import { useGsapContext } from "@/hooks/use-gsap-context";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Message } from "@/types";
 import { cn, formatClock } from "@/lib/utils";
 
@@ -76,6 +83,16 @@ export function MessageBubble({
 
   const repliedTo = typeof message.repliedToMessage === "object" ? message.repliedToMessage : undefined;
 
+  const copyText = message.text || message.caption || (message.type !== "text" ? `[${message.type}]` : "");
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      toast.success("Message copied");
+    } catch {
+      toast.error("Couldn't copy message");
+    }
+  };
+
   return (
     <div ref={scope} className={cn("group flex", outgoing ? "justify-end" : "justify-start")}>
       <div
@@ -123,10 +140,18 @@ export function MessageBubble({
               <DropdownMenuItem onSelect={onReply}>
                 <CornerUpLeft className="h-3.5 w-3.5" /> Reply
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleCopy}>
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={onForward}>
                 <Forward className="h-3.5 w-3.5" /> Forward
               </DropdownMenuItem>
-              {reactions.length > 0 && <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>}
+              {reactions.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
