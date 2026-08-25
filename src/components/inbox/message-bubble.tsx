@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import gsap from "gsap";
 import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Message } from "@/types";
 import { cn, formatClock } from "@/lib/utils";
-import EmojiPicker from "emoji-picker-react"; // or your preferred emoji picker
+import EmojiPicker from "emoji-picker-react";
 
 const QUICK_EMOJI = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -68,10 +68,12 @@ export function MessageBubble({
   onForward: () => void;
 }) {
   const outgoing = message.direction === "outbound";
-  const [showReactions, setShowReactions] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showQuickPicker, setShowQuickPicker] = useState(false);
+  const [showFullPicker, setShowFullPicker] = useState(false);
   const reactions = message.reactions ?? [];
-  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
     gsap.from(el, {
@@ -98,48 +100,191 @@ export function MessageBubble({
 
   const handleEmojiSelect = (emoji: string) => {
     onReact(emoji);
-    setShowEmojiPicker(false);
+    setShowQuickPicker(false);
+    setShowFullPicker(false);
   };
 
+  // Close pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setShowQuickPicker(false);
+        setShowFullPicker(false);
+      }
+    };
+
+    if (showQuickPicker || showFullPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showQuickPicker, showFullPicker]);
+
   return (
-    <div ref={scope} className={cn("group flex", outgoing ? "justify-end" : "justify-start")}>
-      <div
-        className="relative max-w-[70%]"
-        onMouseEnter={() => setShowReactions(true)}
-        onMouseLeave={() => setShowReactions(false)}
-      >
-        {/* Hover action row - positioned relative to message */}
+    <div 
+      ref={scope} 
+      className={cn("group flex", outgoing ? "justify-end" : "justify-start")}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        // Don't close pickers immediately on mouse leave
+        // They'll close via click outside
+      }}
+    >
+      <div className="relative max-w-[70%] flex items-start gap-2">
+        {/* Emoji button - appears on hover on the side */}
         <div
           className={cn(
-            "absolute -top-9 z-10 flex items-center gap-0.5 border border-border bg-card px-1 py-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100",
-            outgoing ? "right-0" : "left-0"
+            "flex-shrink-0 transition-all duration-200",
+            isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2 pointer-events-none",
+            outgoing ? "order-2" : "order-0"
           )}
         >
-          {/* Quick emoji reactions */}
-          {QUICK_EMOJI.slice(0, 4).map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => onReact(emoji)}
-              className="flex h-6 w-6 items-center justify-center text-sm hover:bg-accent rounded"
-            >
-              {emoji}
-            </button>
-          ))}
-          
-          {/* Plus button to open emoji picker */}
           <button
-            ref={emojiButtonRef}
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="flex h-6 w-6 items-center justify-center hover:bg-accent rounded"
+            ref={buttonRef}
+            onClick={() => setShowQuickPicker(!showQuickPicker)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border hover:bg-accent shadow-sm transition-colors"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Smile className="h-4 w-4" />
           </button>
+        </div>
 
-          {/* More options dropdown */}
+        {/* Message bubble */}
+        <div className={cn("flex-1", outgoing ? "order-1" : "order-1")}>
+          <div
+            className={cn(
+              "relative px-3 py-2.5 text-base shadow-sm",
+              outgoing ? "bg-bubble-out" : "bg-bubble-in border border-border"
+            )}
+          >
+            {message.senderType && (
+              <p
+                className={cn(
+                  "mb-1 flex items-center gap-1 text-xs font-medium",
+                  message.senderType === "bot" ? "text-brand-strong" : "text-muted-foreground"
+                )}
+              >
+                {message.senderType === "bot" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                {message.senderType === "bot" ? "Bot" : "Agent"}
+                {message.senderName ? ` · ${message.senderName}` : ""}
+              </p>
+            )}
+
+            {message.forwardedFromMessage && (
+              <p className="mb-1 flex items-center gap-1 text-xs italic text-muted-foreground">
+                <Forward className="h-3 w-3" /> Forwarded
+              </p>
+            )}
+
+            {repliedTo && (
+              <div className="mb-1.5 border-l-2 border-brand bg-black/5 px-2 py-1 text-xs text-muted-foreground dark:bg-white/5">
+                {repliedTo.text || `[${repliedTo.type}]`}
+              </div>
+            )}
+
+            {message.type !== "text" && message.type !== "reaction" && message.type !== "system" && (
+              <div className="mb-1 -mx-1 -mt-1 overflow-hidden">
+                <MediaContent message={message} />
+              </div>
+            )}
+
+            {message.type === "template" && (
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-strong">Template · {message.templateName}</p>
+            )}
+
+            {(message.text || message.caption) && <p className="whitespace-pre-wrap break-words">{message.text || message.caption}</p>}
+
+            {message.status === "failed" && message.errorMessage && (
+              <p className="mt-1 text-xs text-destructive">{message.errorMessage}</p>
+            )}
+
+            <div className="mt-1.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
+              {formatClock(message.createdAt)}
+              {outgoing && <StatusTicks status={message.status} />}
+            </div>
+
+            {reactions.length > 0 && (
+              <div className="absolute -bottom-3 right-1 flex items-center border border-border bg-card px-1 text-xs shadow-sm">
+                {[...new Set(reactions.map((r) => r.emoji))].join(" ")}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick emoji picker - positioned on the side */}
+        {showQuickPicker && (
+          <div 
+            ref={pickerRef}
+            className={cn(
+              "absolute z-20 top-0",
+              outgoing ? "right-full mr-2" : "left-full ml-2"
+            )}
+          >
+            <div className="bg-card border border-border rounded-lg shadow-lg p-2 min-w-[200px]">
+              <div className="flex flex-wrap gap-1">
+                {QUICK_EMOJI.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => handleEmojiSelect(emoji)}
+                    className="flex h-8 w-8 items-center justify-center text-lg hover:bg-accent rounded transition-colors"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+                
+                {/* Plus button to open full emoji picker */}
+                <button
+                  onClick={() => {
+                    setShowFullPicker(true);
+                    setShowQuickPicker(false);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center text-sm hover:bg-accent rounded transition-colors border border-dashed border-border"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full emoji picker - positioned on the side */}
+        {showFullPicker && (
+          <div 
+            ref={pickerRef}
+            className={cn(
+              "absolute z-30 top-0",
+              outgoing ? "right-full mr-2" : "left-full ml-2"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden border border-border">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => handleEmojiSelect(emojiData.emoji)}
+                  width={320}
+                  height={380}
+                  skinTonesDisabled={false}
+                  searchDisabled={false}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* More options dropdown - appears on hover on the side */}
+        <div
+          className={cn(
+            "flex-shrink-0 transition-all duration-200",
+            isHovered ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none",
+            outgoing ? "order-3" : "order-0"
+          )}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex h-6 w-6 items-center justify-center hover:bg-accent rounded">
-                <MoreVertical className="h-3.5 w-3.5" />
+              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border hover:bg-accent shadow-sm transition-colors">
+                <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -160,95 +305,6 @@ export function MessageBubble({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-
-        {/* Emoji Picker positioned relative to the message */}
-        {showEmojiPicker && (
-          <div 
-            className={cn(
-              "absolute z-20",
-              outgoing ? "right-0" : "left-0",
-              "-top-[320px]" // Adjust based on your emoji picker height
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative">
-              {/* Close emoji picker on outside click */}
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowEmojiPicker(false)}
-              />
-              <div className="relative z-20">
-                <EmojiPicker
-                  onEmojiClick={(emojiData) => handleEmojiSelect(emojiData.emoji)}
-                  width={300}
-                  height={350}
-                  skinTonesDisabled
-                  searchDisabled={false}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main message bubble */}
-        <div
-          className={cn(
-            "relative px-3 py-2.5 text-base shadow-sm",
-            outgoing ? "bg-bubble-out" : "bg-bubble-in border border-border"
-          )}
-        >
-          {message.senderType && (
-            <p
-              className={cn(
-                "mb-1 flex items-center gap-1 text-xs font-medium",
-                message.senderType === "bot" ? "text-brand-strong" : "text-muted-foreground"
-              )}
-            >
-              {message.senderType === "bot" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
-              {message.senderType === "bot" ? "Bot" : "Agent"}
-              {message.senderName ? ` · ${message.senderName}` : ""}
-            </p>
-          )}
-
-          {message.forwardedFromMessage && (
-            <p className="mb-1 flex items-center gap-1 text-xs italic text-muted-foreground">
-              <Forward className="h-3 w-3" /> Forwarded
-            </p>
-          )}
-
-          {repliedTo && (
-            <div className="mb-1.5 border-l-2 border-brand bg-black/5 px-2 py-1 text-xs text-muted-foreground dark:bg-white/5">
-              {repliedTo.text || `[${repliedTo.type}]`}
-            </div>
-          )}
-
-          {message.type !== "text" && message.type !== "reaction" && message.type !== "system" && (
-            <div className="mb-1 -mx-1 -mt-1 overflow-hidden">
-              <MediaContent message={message} />
-            </div>
-          )}
-
-          {message.type === "template" && (
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-strong">Template · {message.templateName}</p>
-          )}
-
-          {(message.text || message.caption) && <p className="whitespace-pre-wrap break-words">{message.text || message.caption}</p>}
-
-          {message.status === "failed" && message.errorMessage && (
-            <p className="mt-1 text-xs text-destructive">{message.errorMessage}</p>
-          )}
-
-          <div className="mt-1.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
-            {formatClock(message.createdAt)}
-            {outgoing && <StatusTicks status={message.status} />}
-          </div>
-
-          {reactions.length > 0 && (
-            <div className="absolute -bottom-3 right-1 flex items-center border border-border bg-card px-1 text-xs shadow-sm">
-              {[...new Set(reactions.map((r) => r.emoji))].join(" ")}
-            </div>
-          )}
         </div>
       </div>
     </div>
