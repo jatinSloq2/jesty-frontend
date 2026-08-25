@@ -132,16 +132,17 @@ export function MessageBubble({
       }}
     >
       <div className="relative max-w-[70%] flex items-start gap-2">
-        {/* For outgoing messages: Emoji button on the LEFT (before message) */}
-        {/* For incoming messages: Emoji button on the RIGHT (after message) */}
+        {/* For outgoing messages: Both buttons on the LEFT */}
+        {/* For incoming messages: Both buttons on the RIGHT */}
         <div
           className={cn(
-            "flex-shrink-0 transition-all duration-200",
+            "flex-shrink-0 transition-all duration-200 flex items-center gap-1",
             isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2 pointer-events-none",
-            // Outgoing: button on left (order-0), Incoming: button on right (order-2)
+            // Both buttons on the same side
             outgoing ? "order-0" : "order-2"
           )}
         >
+          {/* Emoji button */}
           <button
             ref={buttonRef}
             onClick={() => setShowQuickPicker(!showQuickPicker)}
@@ -149,6 +150,32 @@ export function MessageBubble({
           >
             <Smile className="h-4 w-4" />
           </button>
+
+          {/* More options dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border hover:bg-accent shadow-sm transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onSelect={onReply}>
+                <CornerUpLeft className="h-3.5 w-3.5" /> Reply
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleCopy}>
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onForward}>
+                <Forward className="h-3.5 w-3.5" /> Forward
+              </DropdownMenuItem>
+              {reactions.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Message bubble - always in the middle */}
@@ -219,8 +246,8 @@ export function MessageBubble({
             ref={pickerRef}
             className={cn(
               "absolute z-20 top-0",
-              // For outgoing: picker on the LEFT of the emoji button
-              // For incoming: picker on the RIGHT of the emoji button
+              // For outgoing: picker on the LEFT of the buttons
+              // For incoming: picker on the RIGHT of the buttons
               outgoing ? "right-full mr-2" : "left-full ml-2"
             )}
           >
@@ -276,42 +303,6 @@ export function MessageBubble({
             </div>
           </div>
         )}
-
-        {/* More options dropdown */}
-        <div
-          className={cn(
-            "flex-shrink-0 transition-all duration-200",
-            isHovered ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none",
-            // Outgoing: more options on the RIGHT (after message) - order-2
-            // Incoming: more options on the LEFT (before message) - order-0
-            outgoing ? "order-2" : "order-0"
-          )}
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-card border border-border hover:bg-accent shadow-sm transition-colors">
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onSelect={onReply}>
-                <CornerUpLeft className="h-3.5 w-3.5" /> Reply
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleCopy}>
-                <Copy className="h-3.5 w-3.5" /> Copy
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={onForward}>
-                <Forward className="h-3.5 w-3.5" /> Forward
-              </DropdownMenuItem>
-              {reactions.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={onUnreact}>Remove reaction</DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </div>
     </div>
   );
