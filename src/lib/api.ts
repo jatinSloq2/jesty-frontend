@@ -89,6 +89,15 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
       auth: false,
     }),
+  // The /sso/callback?token=... page exchanges the short-lived handoff
+  // token (minted by the other backend's "Open inbox" button) for a normal
+  // Jesty session — same response shape as login().
+  ssoLogin: (token: string) =>
+    request<LoginResult>("/auth/sso", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+      auth: false,
+    }),
   me: () => request<{ user: AuthUser }>("/auth/me"),
   logout: () => request<null>("/auth/logout", { method: "POST" }),
 };

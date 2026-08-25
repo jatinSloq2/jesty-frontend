@@ -12,6 +12,7 @@ interface AuthContextValue {
   socket: Socket | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithSsoToken: (token: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -49,6 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/inbox");
   }, [router]);
 
+  // Used by /sso/callback: exchanges the one-time SSO handoff token (from
+  // the other backend's "Open inbox" button) for a normal Jesty session.
+  const loginWithSsoToken = useCallback(async (token: string) => {
+    const result = await authApi.ssoLogin(token);
+    setAccessToken(result.accessToken);
+    setUser(result.user);
+    setSocket(getSocket(result.accessToken));
+    router.push("/inbox");
+  }, [router]);
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -62,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, socket, isLoading, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, socket, isLoading, login, loginWithSsoToken, logout }}>{children}</AuthContext.Provider>
   );
 }
 
