@@ -142,6 +142,12 @@ export interface Message {
   templateName?: string;
   status: MessageStatus;
   sentBy?: string;
+  // "bot" | "agent" — present only on messages forwarded from the other
+  // backend (AI replies, agent replies made during a WhatsApp handover).
+  // Absent for a message sent directly through Jesty's own inbox — those
+  // show no badge at all.
+  senderType?: "bot" | "agent";
+  senderName?: string;
   repliedToMessage?: { _id: string; text?: string; type: MessageType; direction: MessageDirection } | string;
   repliedToWaMessageId?: string;
   forwardedFromMessage?: string;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import gsap from "gsap";
-import { Check, CheckCheck, Clock, CornerUpLeft, FileText, Forward, MoreVertical, Play, Smile, AlertCircle } from "lucide-react";
+import { Check, CheckCheck, Clock, CornerUpLeft, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User } from "lucide-react";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Message } from "@/types";
@@ -137,6 +137,19 @@ export function MessageBubble({
             outgoing ? "bg-bubble-out" : "bg-bubble-in border border-border"
           )}
         >
+          {message.senderType && (
+            <p
+              className={cn(
+                "mb-1 flex items-center gap-1 text-xs font-medium",
+                message.senderType === "bot" ? "text-brand-strong" : "text-muted-foreground"
+              )}
+            >
+              {message.senderType === "bot" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+              {message.senderType === "bot" ? "Bot" : "Agent"}
+              {message.senderName ? ` · ${message.senderName}` : ""}
+            </p>
+          )}
+
           {message.forwardedFromMessage && (
             <p className="mb-1 flex items-center gap-1 text-xs italic text-muted-foreground">
               <Forward className="h-3 w-3" /> Forwarded
