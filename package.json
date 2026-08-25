@@ -43,7 +43,8 @@
     "@hookform/resolvers": "latest",
     "zod": "latest",
     "sonner": "latest",
-    "date-fns": "latest"
+    "date-fns": "latest",
+    "emoji-picker-react": "latest"
   },
   "devDependencies": {
     "eslint": "latest",

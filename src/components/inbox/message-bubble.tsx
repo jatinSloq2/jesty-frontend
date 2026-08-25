@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import gsap from "gsap";
-import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User } from "lucide-react";
+import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Message } from "@/types";
 import { cn, formatClock } from "@/lib/utils";
+import EmojiPicker from "emoji-picker-react"; // or your preferred emoji picker
 
 const QUICK_EMOJI = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -68,7 +69,9 @@ export function MessageBubble({
 }) {
   const outgoing = message.direction === "outbound";
   const [showReactions, setShowReactions] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const reactions = message.reactions ?? [];
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
 
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
     gsap.from(el, {
@@ -93,6 +96,11 @@ export function MessageBubble({
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    onReact(emoji);
+    setShowEmojiPicker(false);
+  };
+
   return (
     <div ref={scope} className={cn("group flex", outgoing ? "justify-end" : "justify-start")}>
       <div
@@ -100,39 +108,37 @@ export function MessageBubble({
         onMouseEnter={() => setShowReactions(true)}
         onMouseLeave={() => setShowReactions(false)}
       >
-        {/* Hover action row */}
+        {/* Hover action row - positioned relative to message */}
         <div
           className={cn(
             "absolute -top-9 z-10 flex items-center gap-0.5 border border-border bg-card px-1 py-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100",
             outgoing ? "right-0" : "left-0"
           )}
         >
+          {/* Quick emoji reactions */}
           {QUICK_EMOJI.slice(0, 4).map((emoji) => (
             <button
               key={emoji}
               onClick={() => onReact(emoji)}
-              className="flex h-6 w-6 items-center justify-center text-sm hover:bg-accent"
+              className="flex h-6 w-6 items-center justify-center text-sm hover:bg-accent rounded"
             >
               {emoji}
             </button>
           ))}
+          
+          {/* Plus button to open emoji picker */}
+          <button
+            ref={emojiButtonRef}
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="flex h-6 w-6 items-center justify-center hover:bg-accent rounded"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+
+          {/* More options dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex h-6 w-6 items-center justify-center hover:bg-accent">
-                <Smile className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {QUICK_EMOJI.map((emoji) => (
-                <DropdownMenuItem key={emoji} onSelect={() => onReact(emoji)}>
-                  <span className="mr-2">{emoji}</span> React
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-6 w-6 items-center justify-center hover:bg-accent">
+              <button className="flex h-6 w-6 items-center justify-center hover:bg-accent rounded">
                 <MoreVertical className="h-3.5 w-3.5" />
               </button>
             </DropdownMenuTrigger>
@@ -156,6 +162,36 @@ export function MessageBubble({
           </DropdownMenu>
         </div>
 
+        {/* Emoji Picker positioned relative to the message */}
+        {showEmojiPicker && (
+          <div 
+            className={cn(
+              "absolute z-20",
+              outgoing ? "right-0" : "left-0",
+              "-top-[320px]" // Adjust based on your emoji picker height
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {/* Close emoji picker on outside click */}
+              <div 
+                className="fixed inset-0 z-10" 
+                onClick={() => setShowEmojiPicker(false)}
+              />
+              <div className="relative z-20">
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => handleEmojiSelect(emojiData.emoji)}
+                  width={300}
+                  height={350}
+                  skinTonesDisabled
+                  searchDisabled={false}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main message bubble */}
         <div
           className={cn(
             "relative px-3 py-2.5 text-base shadow-sm",
