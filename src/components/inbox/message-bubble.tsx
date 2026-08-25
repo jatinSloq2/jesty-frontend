@@ -129,17 +129,17 @@ export function MessageBubble({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
-        // Don't close pickers immediately on mouse leave
-        // They'll close via click outside
       }}
     >
       <div className="relative max-w-[70%] flex items-start gap-2">
-        {/* Emoji button - appears on hover on the side */}
+        {/* For outgoing messages: Emoji button on the LEFT (before message) */}
+        {/* For incoming messages: Emoji button on the RIGHT (after message) */}
         <div
           className={cn(
             "flex-shrink-0 transition-all duration-200",
             isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2 pointer-events-none",
-            outgoing ? "order-2" : "order-0"
+            // Outgoing: button on left (order-0), Incoming: button on right (order-2)
+            outgoing ? "order-0" : "order-2"
           )}
         >
           <button
@@ -151,8 +151,8 @@ export function MessageBubble({
           </button>
         </div>
 
-        {/* Message bubble */}
-        <div className={cn("flex-1", outgoing ? "order-1" : "order-1")}>
+        {/* Message bubble - always in the middle */}
+        <div className="flex-1 order-1">
           <div
             className={cn(
               "relative px-3 py-2.5 text-base shadow-sm",
@@ -219,6 +219,8 @@ export function MessageBubble({
             ref={pickerRef}
             className={cn(
               "absolute z-20 top-0",
+              // For outgoing: picker on the LEFT of the emoji button
+              // For incoming: picker on the RIGHT of the emoji button
               outgoing ? "right-full mr-2" : "left-full ml-2"
             )}
           >
@@ -255,6 +257,8 @@ export function MessageBubble({
             ref={pickerRef}
             className={cn(
               "absolute z-30 top-0",
+              // For outgoing: picker on the LEFT
+              // For incoming: picker on the RIGHT
               outgoing ? "right-full mr-2" : "left-full ml-2"
             )}
             onClick={(e) => e.stopPropagation()}
@@ -273,12 +277,14 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* More options dropdown - appears on hover on the side */}
+        {/* More options dropdown */}
         <div
           className={cn(
             "flex-shrink-0 transition-all duration-200",
             isHovered ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none",
-            outgoing ? "order-3" : "order-0"
+            // Outgoing: more options on the RIGHT (after message) - order-2
+            // Incoming: more options on the LEFT (before message) - order-0
+            outgoing ? "order-2" : "order-0"
           )}
         >
           <DropdownMenu>
