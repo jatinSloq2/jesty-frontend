@@ -12,6 +12,20 @@ import { profileApi, ApiClientError } from "@/lib/api";
 import type { BusinessProfile } from "@/types";
 import { initials } from "@/lib/utils";
 
+const BUSINESS_VERTICALS: { value: string; label: string }[] = [
+  { value: "ALCOHOL", label: "Alcoholic drinks" },
+  { value: "GOVT", label: "Government" },
+  { value: "HOTEL", label: "Hotel and lodging" },
+  { value: "HEALTH", label: "Medical and health" },
+  { value: "OTC_DRUGS", label: "Over-the-counter medicine" },
+  { value: "NONPROFIT", label: "Charity" },
+  { value: "PROF_SERVICES", label: "Professional services" },
+  { value: "RETAIL", label: "Shopping and retail" },
+  { value: "TRAVEL", label: "Travel and transportation" },
+  { value: "RESTAURANT", label: "Restaurant" },
+  { value: "OTHER", label: "Other" },
+];
+
 export function BusinessProfileForm({ phoneNumberId }: { phoneNumberId?: string }) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,7 +144,21 @@ export function BusinessProfileForm({ phoneNumberId }: { phoneNumberId?: string 
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vertical">Category</Label>
-          <Input id="vertical" value={profile?.vertical ?? ""} onChange={(e) => update("vertical", e.target.value)} />
+          <Select
+            value={profile?.vertical ?? undefined}
+            onValueChange={(value) => update("vertical", value)}
+          >
+            <SelectTrigger id="vertical">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {BUSINESS_VERTICALS.map((v) => (
+                <SelectItem key={v.value} value={v.value}>
+                  {v.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
