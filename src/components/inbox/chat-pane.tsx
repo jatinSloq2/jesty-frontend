@@ -43,6 +43,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [forwardId, setForwardId] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const isFirstLoad = useRef(true);
 
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
     gsap.from(el, { autoAlpha: 0, duration: 0.25, ease: "power1.out" });
@@ -52,6 +53,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   useEffect(() => {
     setLoading(true);
     setReplyTo(null);
+    isFirstLoad.current = true;
     Promise.all([conversationsApi.get(conversationId), conversationsApi.messages(conversationId, 1, 50)])
       .then(([conv, msgs]) => {
         setConversation(conv);
@@ -66,8 +68,11 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
     };
   }, [conversationId, socket]);
 
+  // Jump instantly to bottom on first load of a conversation; smooth-scroll
+  // for subsequent message arrivals so new messages don't feel jarring.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: isFirstLoad.current ? "auto" : "smooth" });
+    isFirstLoad.current = false;
   }, [messages.length]);
 
   useEffect(() => {
@@ -178,8 +183,8 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   let lastDay = "";
 
   return (
-    <div ref={scope} className="flex flex-1 overflow-hidden">
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div ref={scope} className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border bg-bg-panel px-4 py-2.5">
           <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => setDrawerOpen((o) => !o)}>
@@ -216,7 +221,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
         </div>
 
         {/* Thread */}
-        <div className="jesty-chat-bg flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        <div className="jesty-chat-bg flex-1 min-h-0 space-y-3 overflow-y-auto px-4 py-4">
           {messages.map((message) => {
             const day = formatDaySeparator(message.createdAt);
             const showSeparator = day !== lastDay;
