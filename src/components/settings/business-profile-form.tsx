@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { profileApi, ApiClientError } from "@/lib/api";
 import type { BusinessProfile } from "@/types";
 import { initials } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const BUSINESS_VERTICALS: { value: string; label: string }[] = [
   { value: "ALCOHOL", label: "Alcoholic drinks" },
@@ -46,12 +46,16 @@ export function BusinessProfileForm({ phoneNumberId }: { phoneNumberId?: string 
   const update = <K extends keyof BusinessProfile>(key: K, value: BusinessProfile[K]) =>
     setProfile((p) => ({ ...(p ?? {}), [key]: value }));
 
+  // Meta's whatsapp_business_profile POST endpoint only ever responds with
+  // { success: true } — it never echoes back the updated fields. Our local
+  // `profile` state already reflects everything the user edited (it's what
+  // we just sent in the PATCH body), so on success we simply keep it as-is
+  // rather than overwriting it with the API response.
   const save = async () => {
     if (!profile) return;
     setSaving(true);
     try {
-      const updated = await profileApi.update({ ...profile, phoneNumberId });
-      setProfile(updated);
+      await profileApi.update({ ...profile, phoneNumberId });
       toast.success("Business profile updated");
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : "Couldn't save the profile");
@@ -60,14 +64,18 @@ export function BusinessProfileForm({ phoneNumberId }: { phoneNumberId?: string 
     }
   };
 
+  // Unlike text fields, the new profile_picture_url is server-generated and
+  // unknowable client-side, so this is the one case that genuinely needs a
+  // refetch after a successful upload.
   const uploadPicture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     setUploadingPic(true);
     try {
-      const updated = await profileApi.uploadPicture(file, phoneNumberId);
-      setProfile(updated);
+      await profileApi.uploadPicture(file, phoneNumberId);
+      const fresh = await profileApi.get(phoneNumberId);
+      setProfile(fresh);
       toast.success("Profile picture updated");
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : "Upload failed");
@@ -145,10 +153,7 @@ export function BusinessProfileForm({ phoneNumberId }: { phoneNumberId?: string 
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vertical">Category</Label>
-          <Select
-            value={profile?.vertical ?? undefined}
-            onValueChange={(value) => update("vertical", value)}
-          >
+          <Select value={profile?.vertical || undefined} onValueChange={(value) => update("vertical", value)}>
             <SelectTrigger id="vertical">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
