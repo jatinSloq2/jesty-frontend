@@ -5,6 +5,7 @@ import { toast } from "@/components/ui/jesty-toast";
 import { Bell, BellOff, BellRing, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { notificationsApi, ApiClientError } from "@/lib/api";
+import { isFcmConfigured, onForegroundFcmMessage, requestFcmToken } from "@/lib/firebase";
 
 const STORAGE_KEY = "jesty_device_token";
 
@@ -19,11 +20,34 @@ export function NotificationsPanel() {
       return;
     }
     setPermission(Notification.permission);
+    // This is a device/push registration id, not a session credential, so
+    // there's no security reason to keep it out of localStorage the way we
+    // did for the auth access token — it only ever unlocks push delivery,
+    // never an API call.
     setToken(window.localStorage.getItem(STORAGE_KEY));
   }, []);
 
+  // Foreground messages (tab open & focused) skip the service worker's
+  // background handler entirely, so without this listener a granted,
+  // correctly-registered subscription would still show nothing while the
+  // user is actively looking at Jesty.
+  useEffect(() => {
+    if (!token) return;
+    let unsubscribe: (() => void) | undefined;
+    onForegroundFcmMessage(({ title, body }) => {
+      toast.success(title ? `${title}${body ? ` — ${body}` : ""}` : body || "New message");
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+    return () => unsubscribe?.();
+  }, [token]);
+
   const enable = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (!isFcmConfigured()) {
+      toast.error("Push notifications aren't configured on this deployment yet.");
+      return;
+    }
     setBusy(true);
     try {
       const result = await Notification.requestPermission();
@@ -32,12 +56,11 @@ export function NotificationsPanel() {
         toast.error("Notifications were blocked in your browser settings.");
         return;
       }
-      // NOTE: this generates a placeholder device identifier so the real
-      // POST /notifications/device-token flow can be exercised end-to-end.
-      // Swap this for Firebase Cloud Messaging's getToken() (with your
-      // VAPID key + service worker registered) in a production deployment —
-      // the backend already expects a genuine FCM token here.
-      const deviceToken = window.localStorage.getItem(STORAGE_KEY) ?? crypto.randomUUID();
+      const deviceToken = await requestFcmToken();
+      if (!deviceToken) {
+        toast.error("Couldn't get a push registration token from Firebase.");
+        return;
+      }
       await notificationsApi.registerDeviceToken(deviceToken, "web");
       window.localStorage.setItem(STORAGE_KEY, deviceToken);
       setToken(deviceToken);

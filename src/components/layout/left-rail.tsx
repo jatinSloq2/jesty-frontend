@@ -9,6 +9,7 @@ import { useGsapContext } from "@/hooks/use-gsap-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { SocketStatusIndicator } from "@/components/layout/socket-status-indicator";
 import { JestyMark } from "@/components/brand/jesty-mark";
 import { cn, initials } from "@/lib/utils";
 
@@ -69,6 +70,9 @@ export function LeftRail() {
       </div>
 
       <div className="flex flex-col items-center gap-2">
+        <div data-rail-item>
+          <SocketStatusIndicator />
+        </div>
         <div data-rail-item>
           <ThemeToggle />
         </div>

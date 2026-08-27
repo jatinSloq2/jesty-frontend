@@ -14,6 +14,13 @@ export function getSocket(token: string): Socket {
     auth: { token },
     withCredentials: true,
     transports: ["websocket", "polling"],
+    // Auto-retry with capped exponential-ish backoff for a while, then stop
+    // and let the UI (use-socket-status.ts) offer a manual "Reconnect"
+    // button instead of retrying forever in the background.
+    reconnection: true,
+    reconnectionAttempts: 8,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
   });
   return socket;
 }
