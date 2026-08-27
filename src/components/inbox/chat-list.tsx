@@ -8,11 +8,13 @@ import { conversationsApi } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 import { useChannelStore } from "@/providers/channel-store";
 import { useGsapContext } from "@/hooks/use-gsap-context";
+import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChannelSelector } from "@/components/inbox/channel-selector";
 import { ConversationRow } from "@/components/inbox/conversation-row";
+import { PanelResizer } from "@/components/layout/panel-resizer";
 import type { Conversation } from "@/types";
 
 const STATUS_TABS = [
@@ -34,6 +36,8 @@ export function ChatList() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  // WhatsApp-style adjustable column width, remembered across sessions.
+  const { width, dragging, onPointerDown } = useResizableWidth("jesty:chatlist-width", 384, 300, 560);
 
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
     const rows = el.querySelectorAll("[data-row]");
@@ -105,7 +109,11 @@ export function ChatList() {
   }, [socket]);
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-border bg-bg-panel md:w-96">
+    <div className="flex h-full shrink-0">
+    <div
+      className="flex h-full w-full flex-col border-r border-border bg-bg-panel md:w-[var(--jesty-chatlist-w)]"
+      style={{ ["--jesty-chatlist-w" as string]: `${width}px` }}
+    >
       <div className="space-y-2 border-b border-border p-3">
         <ChannelSelector />
         <div className="relative">
@@ -152,6 +160,8 @@ export function ChatList() {
           )}
         </div>
       </ScrollArea>
+    </div>
+      <PanelResizer onPointerDown={(e) => onPointerDown(e, "right")} dragging={dragging} className="hidden md:block" />
     </div>
   );
 }

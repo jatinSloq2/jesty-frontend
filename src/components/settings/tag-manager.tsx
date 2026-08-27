@@ -77,7 +77,7 @@ export function TagManager() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
+  const scope = useGsapContext<HTMLTableElement>((_ctx, el) => {
     gsap.from(el.querySelectorAll("[data-tag]"), { autoAlpha: 0, y: 8, duration: 0.3, stagger: 0.03, ease: "power2.out" });
   }, [tags.length]);
 
@@ -110,7 +110,10 @@ export function TagManager() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Tags</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Tags</h2>
+          <p className="text-sm text-muted-foreground">Label contacts for quick filtering across the inbox.</p>
+        </div>
         <TagFormDialog
           onSaved={(t) => setTags((prev) => [...prev, t].sort((a, b) => a.name.localeCompare(b.name)))}
           trigger={
@@ -121,35 +124,50 @@ export function TagManager() {
         />
       </div>
 
-      <div ref={scope} className="mt-4 divide-y divide-border border border-border">
-        {tags.length === 0 && (
-          <p className="flex items-center gap-2 p-8 text-center text-sm text-muted-foreground">
-            <TagIcon className="h-4 w-4" /> No tags yet.
-          </p>
-        )}
-        {tags.map((tag) => (
-          <div key={tag._id} data-tag className="flex items-center justify-between bg-card px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <span className="h-3.5 w-3.5 shrink-0" style={{ backgroundColor: tag.color }} />
-              <span className="font-medium">{tag.name}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <TagFormDialog
-                tag={tag}
-                onSaved={(updated) => setTags((prev) => prev.map((t) => (t._id === updated._id ? updated : t)))}
-                trigger={
-                  <Button variant="ghost" size="icon">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                }
-              />
-              <Button variant="ghost" size="icon" onClick={() => remove(tag)}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {tags.length === 0 ? (
+        <p className="mt-4 flex items-center gap-2 border border-border p-8 text-center text-sm text-muted-foreground">
+          <TagIcon className="h-4 w-4" /> No tags yet.
+        </p>
+      ) : (
+        <table ref={scope} className="mt-4 w-full border border-border text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="px-4 py-2.5 font-semibold">Tag</th>
+              <th className="px-4 py-2.5 font-semibold">Color</th>
+              <th className="w-24 px-4 py-2.5 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {tags.map((tag) => (
+              <tr key={tag._id} data-tag className="bg-card">
+                <td className="px-4 py-3">
+                  <span className="flex items-center gap-2.5 font-medium">
+                    <span className="h-3.5 w-3.5 shrink-0" style={{ backgroundColor: tag.color }} />
+                    {tag.name}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{tag.color}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    <TagFormDialog
+                      tag={tag}
+                      onSaved={(updated) => setTags((prev) => prev.map((t) => (t._id === updated._id ? updated : t)))}
+                      trigger={
+                        <Button variant="ghost" size="icon">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <Button variant="ghost" size="icon" onClick={() => remove(tag)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

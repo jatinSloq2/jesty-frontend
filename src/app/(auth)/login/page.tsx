@@ -5,13 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { useAuth } from "@/providers/auth-provider";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { JestyWordmark } from "@/components/brand/jesty-mark";
 import { ApiClientError } from "@/lib/api";
 
 const schema = z.object({
@@ -61,11 +62,8 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg-app px-4">
       <div ref={scope} className="w-full max-w-sm border border-border bg-card p-8">
-        <div data-stagger className="mb-8 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center bg-brand text-brand-foreground">
-            <MessageCircle className="h-5 w-5" />
-          </div>
-          <span className="text-xl font-semibold">Jesty</span>
+        <div data-stagger>
+          <JestyWordmark className="mb-8" />
         </div>
 
         <div data-stagger className="mb-6">

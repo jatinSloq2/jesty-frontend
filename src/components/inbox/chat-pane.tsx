@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Hourglass, Info, Loader2 } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { conversationsApi, messagesApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/providers/auth-provider";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { MessageBubble } from "@/components/inbox/message-bubble";
 import { Composer } from "@/components/inbox/composer";
 import { TemplatePicker } from "@/components/inbox/template-picker";
-import { ContactDrawer } from "@/components/inbox/contact-drawer";
+import { ContactInfoSidebar, ServiceWindowBadge } from "@/components/inbox/contact-info-sidebar";
 import { ForwardDialog } from "@/components/inbox/forward-dialog";
 import type { Conversation, Message } from "@/types";
 import { formatDaySeparator, initials } from "@/lib/utils";
@@ -119,7 +118,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
     }
   };
 
-  const sendFile = async (file: File, type: "image" | "video" | "audio" | "document") => {
+  const sendFile = async (file: File, type: "image" | "video" | "audio" | "document" | "sticker") => {
     try {
       const message = await messagesApi.upload({ conversationId, type, file, replyToMessageId: replyTo?._id ?? undefined });
       setMessages((prev) => appendMessage(prev, message));
@@ -168,7 +167,7 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
 
   if (loading || !conversation) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-bg-chat">
+      <div className="jesty-chat-bg flex flex-1 items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -179,79 +178,77 @@ export function ChatPane({ conversationId }: { conversationId: string }) {
   let lastDay = "";
 
   return (
-    <div ref={scope} className="flex flex-1 flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-bg-panel px-4 py-2.5">
-        <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => setDrawerOpen(true)}>
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={conversation.contact?.avatarUrl} alt={name} />
-            <AvatarFallback>{initials(name)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold">{name}</p>
-            <p className="truncate text-sm text-muted-foreground">{conversation.contact?.phoneNumber}</p>
-          </div>
-        </button>
-
-        <div className="flex items-center gap-2">
-          {!conversation.canSendFreeform && (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
-              <Hourglass className="h-3 w-3" /> Window closed — template only
-            </Badge>
-          )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" size="sm" className="capitalize">
-                {conversation.status}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {STATUS_OPTIONS.map((s) => (
-                <DropdownMenuItem key={s} onSelect={() => updateStatus(s)} className="capitalize">
-                  {s}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="ghost" size="icon" onClick={() => setDrawerOpen(true)}>
-            <Info className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Thread */}
-      <div className="flex-1 space-y-3 overflow-y-auto bg-bg-chat px-4 py-4">
-        {messages.map((message) => {
-          const day = formatDaySeparator(message.createdAt);
-          const showSeparator = day !== lastDay;
-          lastDay = day;
-          return (
-            <div key={message._id}>
-              {showSeparator && (
-                <div className="my-3 flex justify-center">
-                  <span className="bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">{day}</span>
-                </div>
-              )}
-              <MessageBubble
-                message={message}
-                onReact={(emoji) => react(message, emoji)}
-                onUnreact={() => unreact(message)}
-                onReply={() => setReplyTo(message)}
-                onForward={() => setForwardId(message._id)}
-              />
+    <div ref={scope} className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border bg-bg-panel px-4 py-2.5">
+          <button className="flex min-w-0 items-center gap-3 text-left" onClick={() => setDrawerOpen((o) => !o)}>
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={conversation.contact?.avatarUrl} alt={name} />
+              <AvatarFallback>{initials(name)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-base font-semibold">{name}</p>
+              <p className="truncate text-sm text-muted-foreground">{conversation.contact?.phoneNumber}</p>
             </div>
-          );
-        })}
-        <div ref={bottomRef} />
+          </button>
+
+          <div className="flex items-center gap-2">
+            <ServiceWindowBadge conversation={conversation} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="capitalize">
+                  {conversation.status}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {STATUS_OPTIONS.map((s) => (
+                  <DropdownMenuItem key={s} onSelect={() => updateStatus(s)} className="capitalize">
+                    {s}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant={drawerOpen ? "secondary" : "ghost"} size="icon" onClick={() => setDrawerOpen((o) => !o)}>
+              <Info className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Thread */}
+        <div className="jesty-chat-bg flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          {messages.map((message) => {
+            const day = formatDaySeparator(message.createdAt);
+            const showSeparator = day !== lastDay;
+            lastDay = day;
+            return (
+              <div key={message._id}>
+                {showSeparator && (
+                  <div className="my-3 flex justify-center">
+                    <span className="bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">{day}</span>
+                  </div>
+                )}
+                <MessageBubble
+                  message={message}
+                  onReact={(emoji) => react(message, emoji)}
+                  onUnreact={() => unreact(message)}
+                  onReply={() => setReplyTo(message)}
+                  onForward={() => setForwardId(message._id)}
+                />
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
+        </div>
+
+        {conversation.canSendFreeform ? (
+          <Composer replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onSendText={sendText} onSendFile={sendFile} />
+        ) : (
+          <TemplatePicker onSend={sendTemplate} />
+        )}
       </div>
 
-      {conversation.canSendFreeform ? (
-        <Composer replyTo={replyTo} onCancelReply={() => setReplyTo(null)} onSendText={sendText} onSendFile={sendFile} />
-      ) : (
-        <TemplatePicker onSend={sendTemplate} />
-      )}
-
-      <ContactDrawer conversation={conversation} open={drawerOpen} onOpenChange={setDrawerOpen} />
+      <ContactInfoSidebar conversation={conversation} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <ForwardDialog open={!!forwardId} onOpenChange={(o) => !o && setForwardId(null)} messageId={forwardId} excludeConversationId={conversationId} />
     </div>
   );

@@ -1,15 +1,15 @@
-import { SettingsTabs } from "@/components/settings/settings-tabs";
-import { TagManager } from "@/components/settings/tag-manager";
+"use client";
 
-export default function TagsSettingsPage() {
-  return (
-    <div className="flex-1 overflow-y-auto bg-bg-app">
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <SettingsTabs active="tags" />
-        <div className="mt-6">
-          <TagManager />
-        </div>
-      </div>
-    </div>
-  );
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+// Tag management moved onto the Contacts page (Contacts / Tags / Groups
+// tabs) instead of Settings, so it lives next to the contacts it labels.
+// Redirect kept for old links/bookmarks.
+export default function TagsSettingsRedirectPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/contacts?tab=tags");
+  }, [router]);
+  return null;
 }

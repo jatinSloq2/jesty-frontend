@@ -19,8 +19,12 @@
      comes from a crisp neutral-gray border, not a tint. */
   --bg-app: #ffffff;
   --bg-panel: #ffffff;
-  --bg-chat: #fafafa;
-  --bubble-out: #fff1e2;
+  --bg-chat: #f5ede4;
+  /* Outgoing bubble is now solid, pure brand orange (WhatsApp-style —
+     the sender's own bubble carries the accent color solidly, not as a
+     tint). Text inside it switches to white; see --bubble-out-foreground. */
+  --bubble-out: var(--brand);
+  --bubble-out-foreground: #ffffff;
   --bubble-in: #ffffff;
 
   --text-primary: #111111;
@@ -59,8 +63,9 @@
 
   --bg-app: #0b0b0c;
   --bg-panel: #151515;
-  --bg-chat: #0e0e0f;
-  --bubble-out: #3a2a17;
+  --bg-chat: #0d0d0e;
+  --bubble-out: var(--brand);
+  --bubble-out-foreground: #1b1200;
   --bubble-in: #1e1e1f;
 
   --text-primary: #f2f2f2;
@@ -125,6 +130,7 @@
   --color-bg-panel: var(--bg-panel);
   --color-bg-chat: var(--bg-chat);
   --color-bubble-out: var(--bubble-out);
+  --color-bubble-out-foreground: var(--bubble-out-foreground);
   --color-bubble-in: var(--bubble-in);
   --color-text-secondary: var(--text-secondary);
   --color-unread-badge: var(--unread-badge);
@@ -181,4 +187,42 @@ select,
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ---------------------------------------------------------------------- */
+/* WhatsApp-style chat surface: a faint repeating doodle wash over the     */
+/* --bg-chat tone, instead of a flat fill. Kept subtle (3% opacity) so it  */
+/* never competes with bubbles or text.                                   */
+/* ---------------------------------------------------------------------- */
+.jesty-chat-bg {
+  background-color: var(--bg-chat);
+  background-image:
+    radial-gradient(circle at 8px 8px, color-mix(in srgb, var(--brand) 18%, transparent) 1.4px, transparent 1.6px),
+    radial-gradient(circle at 34px 26px, color-mix(in srgb, var(--brand) 14%, transparent) 1.1px, transparent 1.3px),
+    radial-gradient(circle at 20px 46px, color-mix(in srgb, var(--text-primary) 8%, transparent) 1px, transparent 1.2px);
+  background-size: 52px 52px;
+  background-repeat: repeat;
+}
+
+/* Draggable panel-resize handles (chat list / contact info sidebar). */
+.jesty-resizer {
+  position: relative;
+  flex-shrink: 0;
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+}
+.jesty-resizer:hover,
+.jesty-resizer[data-dragging="true"] {
+  background: var(--brand);
+}
+
+/* Recording indicator pulse for the voice-note composer state. */
+@keyframes jesty-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+.jesty-rec-dot {
+  animation: jesty-rec-pulse 1.1s ease-in-out infinite;
 }

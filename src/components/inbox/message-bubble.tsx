@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTheme } from "next-themes";
 import gsap from "gsap";
-import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Play, Smile, AlertCircle, Bot, User, Plus } from "lucide-react";
+import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Pause, Play, Smile, AlertCircle, Bot, User, Plus, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Message } from "@/types";
 import { cn, formatClock } from "@/lib/utils";
-import EmojiPicker from "emoji-picker-react";
+import EmojiPicker, { Theme, EmojiStyle } from "emoji-picker-react";
 
 const QUICK_EMOJI = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -27,10 +28,16 @@ function StatusTicks({ status }: { status: Message["status"] }) {
 }
 
 function MediaContent({ message }: { message: Message }) {
-  if (message.type === "image" || message.type === "sticker") {
+  if (message.type === "image") {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={message.mediaUrl} alt={message.caption || "Image"} className="max-h-72 w-full object-cover" />
+    );
+  }
+  if (message.type === "sticker") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={message.mediaUrl} alt="Sticker" className="h-40 w-40 object-contain" draggable={false} />
     );
   }
   if (message.type === "video") {
@@ -41,7 +48,7 @@ function MediaContent({ message }: { message: Message }) {
     );
   }
   if (message.type === "audio") {
-    return <audio controls src={message.mediaUrl} className="w-64" />;
+    return <VoiceMessagePlayer message={message} outgoing={message.direction === "outbound"} />;
   }
   if (message.type === "document") {
     return (
@@ -52,6 +59,82 @@ function MediaContent({ message }: { message: Message }) {
     );
   }
   return null;
+}
+
+// A compact WhatsApp-style voice-note player: one play/pause button, a
+// scrub bar, and elapsed/total time — instead of the bulky native <audio
+// controls> bar, which doesn't fit the bubble and looks out of place
+// against a solid brand-orange background.
+function VoiceMessagePlayer({ message, outgoing }: { message: Message; outgoing: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0); // 0–1
+  const [duration, setDuration] = useState(0);
+  const [current, setCurrent] = useState(0);
+
+  const formatTime = (s: number) => {
+    if (!Number.isFinite(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const r = Math.floor(s % 60);
+    return `${m}:${r.toString().padStart(2, "0")}`;
+  };
+
+  const togglePlay = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+    } else {
+      el.play().catch(() => undefined);
+    }
+  };
+
+  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = audioRef.current;
+    if (!el || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    el.currentTime = ratio * duration;
+  };
+
+  const barColor = outgoing ? "bg-bubble-out-foreground/30" : "bg-muted-foreground/25";
+  const barFill = outgoing ? "bg-bubble-out-foreground" : "bg-brand";
+  const iconWrap = outgoing ? "bg-bubble-out-foreground/15 text-bubble-out-foreground" : "bg-brand/10 text-brand-strong";
+
+  return (
+    <div className="flex w-60 items-center gap-2 py-1">
+      <audio
+        ref={audioRef}
+        src={message.mediaUrl}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onTimeUpdate={(e) => {
+          setCurrent(e.currentTarget.currentTime);
+          setProgress(e.currentTarget.duration ? e.currentTarget.currentTime / e.currentTarget.duration : 0);
+        }}
+        className="hidden"
+      />
+      <button
+        onClick={togglePlay}
+        className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors", iconWrap)}
+        aria-label={playing ? "Pause voice message" : "Play voice message"}
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 translate-x-0.5" />}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className={cn("relative h-1.5 w-full cursor-pointer overflow-hidden", barColor)} onClick={seek}>
+          <div className={cn("absolute inset-y-0 left-0", barFill)} style={{ width: `${progress * 100}%` }} />
+        </div>
+        <div className={cn("mt-1 flex items-center gap-1 text-[11px]", outgoing ? "text-bubble-out-foreground/80" : "text-muted-foreground")}>
+          <Mic className="h-2.5 w-2.5" />
+          {formatTime(playing || current ? current : duration)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function MessageBubble({
@@ -67,7 +150,9 @@ export function MessageBubble({
   onReply: () => void;
   onForward: () => void;
 }) {
+  const { resolvedTheme } = useTheme();
   const outgoing = message.direction === "outbound";
+  const isSticker = message.type === "sticker";
   const [isHovered, setIsHovered] = useState(false);
   const [showQuickPicker, setShowQuickPicker] = useState(false);
   const [showFullPicker, setShowFullPicker] = useState(false);
@@ -182,15 +267,24 @@ export function MessageBubble({
         <div className="flex-1 order-1">
           <div
             className={cn(
-              "relative px-3 py-2.5 text-base shadow-sm",
-              outgoing ? "bg-bubble-out" : "bg-bubble-in border border-border"
+              "relative text-base",
+              isSticker
+                ? "w-40" // stickers ship chrome-less, like WhatsApp — no fill/border/shadow
+                : cn(
+                    "px-3 py-2.5 shadow-sm",
+                    outgoing ? "bg-bubble-out text-bubble-out-foreground" : "bg-bubble-in border border-border"
+                  )
             )}
           >
             {message.senderType && (
               <p
                 className={cn(
                   "mb-1 flex items-center gap-1 text-xs font-medium",
-                  message.senderType === "bot" ? "text-brand-strong" : "text-muted-foreground"
+                  outgoing
+                    ? "text-bubble-out-foreground/85"
+                    : message.senderType === "bot"
+                      ? "text-brand-strong"
+                      : "text-muted-foreground"
                 )}
               >
                 {message.senderType === "bot" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
@@ -200,37 +294,64 @@ export function MessageBubble({
             )}
 
             {message.forwardedFromMessage && (
-              <p className="mb-1 flex items-center gap-1 text-xs italic text-muted-foreground">
+              <p
+                className={cn(
+                  "mb-1 flex items-center gap-1 text-xs italic",
+                  outgoing ? "text-bubble-out-foreground/80" : "text-muted-foreground"
+                )}
+              >
                 <Forward className="h-3 w-3" /> Forwarded
               </p>
             )}
 
             {repliedTo && (
-              <div className="mb-1.5 border-l-2 border-brand bg-black/5 px-2 py-1 text-xs text-muted-foreground dark:bg-white/5">
+              <div
+                className={cn(
+                  "mb-1.5 border-l-2 px-2 py-1 text-xs",
+                  outgoing
+                    ? "border-bubble-out-foreground/50 bg-black/10 text-bubble-out-foreground/85"
+                    : "border-brand bg-black/5 text-muted-foreground dark:bg-white/5"
+                )}
+              >
                 {repliedTo.text || `[${repliedTo.type}]`}
               </div>
             )}
 
             {message.type !== "text" && message.type !== "reaction" && message.type !== "system" && (
-              <div className="mb-1 -mx-1 -mt-1 overflow-hidden">
+              <div className={cn(!isSticker && "mb-1 -mx-1 -mt-1 overflow-hidden")}>
                 <MediaContent message={message} />
               </div>
             )}
 
             {message.type === "template" && (
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-brand-strong">Template · {message.templateName}</p>
+              <p className={cn("mb-1 text-xs font-medium uppercase tracking-wide", outgoing ? "text-bubble-out-foreground/85" : "text-brand-strong")}>
+                Template · {message.templateName}
+              </p>
             )}
 
             {(message.text || message.caption) && <p className="whitespace-pre-wrap break-words">{message.text || message.caption}</p>}
 
             {message.status === "failed" && message.errorMessage && (
-              <p className="mt-1 text-xs text-destructive">{message.errorMessage}</p>
+              <p className={cn("mt-1 text-xs", outgoing ? "text-bubble-out-foreground" : "text-destructive")}>{message.errorMessage}</p>
             )}
 
-            <div className="mt-1.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
-              {formatClock(message.createdAt)}
-              {outgoing && <StatusTicks status={message.status} />}
-            </div>
+            {!isSticker && (
+              <div
+                className={cn(
+                  "mt-1.5 flex items-center justify-end gap-1 text-xs",
+                  outgoing ? "text-bubble-out-foreground/75" : "text-muted-foreground"
+                )}
+              >
+                {formatClock(message.createdAt)}
+                {outgoing && <StatusTicks status={message.status} />}
+              </div>
+            )}
+            {isSticker && (
+              <div className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                {formatClock(message.createdAt)}
+                {outgoing && <StatusTicks status={message.status} />}
+              </div>
+            )}
 
             {reactions.length > 0 && (
               <div className="absolute -bottom-3 right-1 flex items-center border border-border bg-card px-1 text-xs shadow-sm">
@@ -291,13 +412,17 @@ export function MessageBubble({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden border border-border">
+              <div className="overflow-hidden border border-border bg-card shadow-xl">
                 <EmojiPicker
                   onEmojiClick={(emojiData) => handleEmojiSelect(emojiData.emoji)}
+                  theme={resolvedTheme === "dark" ? Theme.DARK : Theme.LIGHT}
+                  emojiStyle={EmojiStyle.NATIVE}
                   width={320}
                   height={380}
                   skinTonesDisabled={false}
                   searchDisabled={false}
+                  previewConfig={{ showPreview: true }}
+                  lazyLoadEmojis
                 />
               </div>
             </div>

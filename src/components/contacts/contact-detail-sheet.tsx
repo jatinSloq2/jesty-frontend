@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Ban, Loader2, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { Loader2, Save, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,22 +80,6 @@ export function ContactDetailSheet({
     }
   };
 
-  const toggleBlock = async () => {
-    if (!contact) return;
-    setSaving(true);
-    try {
-      const updated = await contactsApi.setBlocked(contact._id, !contact.isBlocked);
-      const refreshed = { ...contact, isBlocked: updated.isBlocked };
-      setContact(refreshed);
-      onUpdated(refreshed);
-      toast.success(refreshed.isBlocked ? "Contact blocked" : "Contact unblocked");
-    } catch {
-      toast.error("Couldn't update block status");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const remove = async () => {
     if (!contact) return;
     if (!confirm(`Delete ${contact.name}? This can't be undone.`)) return;
@@ -133,7 +116,6 @@ export function ContactDetailSheet({
               </Avatar>
               <p className="text-base font-semibold">{contact.name}</p>
               <p className="text-sm text-muted-foreground">{contact.phoneNumber}</p>
-              {contact.isBlocked && <Badge variant="destructive">Blocked</Badge>}
             </div>
 
             <section>
@@ -197,15 +179,9 @@ export function ContactDetailSheet({
               Save changes
             </Button>
 
-            <div className="flex gap-2">
-              <Button variant={contact.isBlocked ? "outline" : "secondary"} className="flex-1" onClick={toggleBlock} disabled={saving}>
-                {contact.isBlocked ? <ShieldCheck className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                {contact.isBlocked ? "Unblock" : "Block"}
-              </Button>
-              <Button variant="destructive" className="flex-1" onClick={remove} disabled={saving}>
-                <Trash2 className="h-4 w-4" /> Delete
-              </Button>
-            </div>
+            <Button variant="destructive" className="w-full" onClick={remove} disabled={saving}>
+              <Trash2 className="h-4 w-4" /> Delete contact
+            </Button>
           </div>
         )}
       </SheetContent>

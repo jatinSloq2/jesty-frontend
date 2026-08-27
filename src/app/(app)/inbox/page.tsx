@@ -1,9 +1,9 @@
 "use client";
 
-import { MessageSquare } from "lucide-react";
 import gsap from "gsap";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import { ChatList } from "@/components/inbox/chat-list";
+import { JestyMark } from "@/components/brand/jesty-mark";
 
 export default function InboxPage() {
   const scope = useGsapContext<HTMLDivElement>((_ctx, el) => {
@@ -13,9 +13,9 @@ export default function InboxPage() {
   return (
     <>
       <ChatList />
-      <div ref={scope} className="hidden flex-1 flex-col items-center justify-center gap-3 bg-bg-chat text-center md:flex">
-        <div className="flex h-16 w-16 items-center justify-center border border-border bg-card text-brand-strong">
-          <MessageSquare className="h-7 w-7" />
+      <div ref={scope} className="jesty-chat-bg hidden flex-1 flex-col items-center justify-center gap-3 text-center md:flex">
+        <div className="flex h-16 w-16 items-center justify-center border border-border bg-card">
+          <JestyMark className="h-8 w-8" />
         </div>
         <div>
           <p className="text-base font-medium">Select a conversation</p>
