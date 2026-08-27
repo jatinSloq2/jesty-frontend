@@ -27,7 +27,7 @@ function getFirebaseApp(): FirebaseApp | null {
     return null;
   }
   if (!app) {
-    app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    app = getApps()[0] ?? initializeApp(firebaseConfig);
   }
   return app;
 }
