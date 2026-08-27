@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { Loader2, Pencil, Plus, Trash2, UsersRound } from "lucide-react";
 import gsap from "gsap";
 import { useGsapContext } from "@/hooks/use-gsap-context";

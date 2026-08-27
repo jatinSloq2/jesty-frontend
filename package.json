@@ -42,7 +42,6 @@
     "react-hook-form": "latest",
     "@hookform/resolvers": "latest",
     "zod": "latest",
-    "sonner": "latest",
     "date-fns": "latest",
     "emoji-picker-react": "latest"
   },

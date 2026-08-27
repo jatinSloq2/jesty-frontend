@@ -1,7 +1,7 @@
 "use client";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { templatesApi } from "@/lib/api";
 import type { TemplateCategory, WhatsappIntegration, WhatsappTemplate } from "@/types";
 import { Button } from "@/components/ui/button";

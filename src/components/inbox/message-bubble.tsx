@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import gsap from "gsap";
 import { Check, CheckCheck, Clock, CornerUpLeft, Copy, FileText, Forward, MoreVertical, Pause, Play, Smile, AlertCircle, Bot, User, Plus, Mic } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { useGsapContext } from "@/hooks/use-gsap-context";
 import {
   DropdownMenu,

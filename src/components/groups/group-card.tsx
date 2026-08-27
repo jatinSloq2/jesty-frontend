@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GroupFormDialog } from "@/components/groups/group-form-dialog";

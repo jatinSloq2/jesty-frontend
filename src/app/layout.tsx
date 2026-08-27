@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
+import { JestyToastViewport } from "@/components/ui/jesty-toast";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <TooltipProvider delayDuration={200}>
               {children}
-              <Toaster position="top-right" richColors />
+              <JestyToastViewport />
             </TooltipProvider>
           </AuthProvider>
         </ThemeProvider>

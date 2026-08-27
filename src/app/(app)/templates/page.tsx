@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { templatesApi } from "@/lib/api";
 import type { WhatsappTemplate } from "@/types";
 import { Button } from "@/components/ui/button";

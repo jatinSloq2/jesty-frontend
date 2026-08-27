@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/jesty-toast";
 import { Info, Loader2 } from "lucide-react";
 import gsap from "gsap";
 import { conversationsApi, messagesApi, ApiClientError } from "@/lib/api";
