@@ -114,8 +114,8 @@ export function ContactInfoSidebar({
               <section>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {contact.tags.length === 0 && <p className="text-sm text-muted-foreground">No tags</p>}
-                  {contact.tags.map((t) => (
+                  {(contact.tags ?? []).length === 0 && <p className="text-sm text-muted-foreground">No tags</p>}
+                  {(contact.tags ?? []).map((t) => (
                     <Badge key={t} variant="secondary">
                       {t}
                     </Badge>
@@ -126,8 +126,8 @@ export function ContactInfoSidebar({
               <section>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Groups</h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {contact.groups.length === 0 && <p className="text-sm text-muted-foreground">No groups</p>}
-                  {contact.groups.map((g) => (
+                  {(contact.groups ?? []).length === 0 && <p className="text-sm text-muted-foreground">No groups</p>}
+                  {(contact.groups ?? []).map((g) => (
                     <Badge key={g} variant="outline">
                       {g}
                     </Badge>
