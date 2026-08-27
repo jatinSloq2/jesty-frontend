@@ -1,44 +1,263 @@
 "use client";
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { useState } from "react";
 import { toast } from "@/components/ui/jesty-toast";
 import { templatesApi } from "@/lib/api";
-import type { TemplateCategory, WhatsappIntegration, WhatsappTemplate } from "@/types";
+import type {
+  TemplateCategory,
+  WhatsappIntegration,
+  WhatsappTemplate,
+} from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-type Mode = "CUSTOM" | "COUPON_CODE" | "LIMITED_TIME_OFFER" | "MEDIA_CAROUSEL" | "PRODUCT_CAROUSEL" | "SINGLE_PRODUCT" | "MULTI_PRODUCT";
-type Header = "NONE" | "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "LOCATION";
-const empty = () => ({ name: "", language: "en_US", category: "MARKETING" as TemplateCategory, mode: "CUSTOM" as Mode, header: "NONE" as Header, headerText: "", headerHandle: "", body: "", examples: "", footer: "", coupon: "WELCOME20", offerText: "Offer ends soon", catalogId: "", productId: "", cardCount: "2", expiration: "", otpType: "COPY_CODE" as "COPY_CODE" | "ONE_TAP" | "ZERO_TAP", security: true, packageName: "", signatureHash: "" });
-function vals(s: string) { return s.split(",").map((v) => v.trim()).filter(Boolean); }
-function ex(text: string, raw: string) { const values = vals(raw); const named = [...text.matchAll(/{{([a-z][a-z0-9_]*)}}/gi)].map((m) => m[1]); if (named.length) return { body_text_named_params: [...new Set(named)].map((param_name, i) => ({ param_name, example: values[i] || `Example ${i + 1}` })) }; const n = Math.max(0, ...[...text.matchAll(/{{(\d+)}}/g)].map((m) => Number(m[1]))); return n ? { body_text: [Array.from({ length: n }, (_, i) => values[i] || `Example ${i + 1}`)] } : undefined; }
-
-export function TemplateBuilder({ numbers, initialDraft }: { numbers: WhatsappIntegration[]; initialDraft?: WhatsappTemplate }) {
-  const [d, setD] = useState(empty); const [phone, setPhone] = useState(""); const [busy, setBusy] = useState(false); const [submitted, setSubmitted] = useState<WhatsappTemplate[]>([]);
-  const set = <K extends keyof ReturnType<typeof empty>>(key: K, value: ReturnType<typeof empty>[K]) => setD((x) => ({ ...x, [key]: value }));
-  const auth = d.category === "AUTHENTICATION"; const specialized = d.mode !== "CUSTOM"; const named = /{{[a-z][a-z0-9_]*}}/i.test(d.body);
-  useEffect(() => { if (numbers.length) setPhone((p) => p || numbers.find((n) => n.isDefault)?.whatsapp?.phoneNumberId || numbers[0]?.whatsapp?.phoneNumberId || ""); }, [numbers]);
-  useEffect(() => { if (initialDraft) { const body = initialDraft.components.find((c) => String(c.type).toUpperCase() === "BODY") as any; setD({ ...empty(), name: initialDraft.name, language: initialDraft.language, category: initialDraft.category, body: body?.text || "" }); } }, [initialDraft]);
-  useEffect(() => { if (phone) void templatesApi.list(phone).then(setSubmitted).catch(() => undefined); }, [phone]);
-  const upload = async (e: ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; setBusy(true); try { set("headerHandle", (await templatesApi.uploadHeader(f, phone)).handle); toast.success("Media uploaded"); } catch (x) { toast.error(x instanceof Error ? x.message : "Upload failed"); } finally { setBusy(false); } };
+type Props = {
+  numbers: WhatsappIntegration[];
+  initialDraft?: WhatsappTemplate;
+};
+export function TemplateBuilder({ numbers, initialDraft }: Props) {
+  const [category, setCategory] = useState<TemplateCategory>("UTILITY");
+  const [name, setName] = useState("");
+  const [language, setLanguage] = useState("en_US");
+  const [body, setBody] = useState("");
+  const [header, setHeader] = useState("NONE");
+  const [footer, setFooter] = useState("");
+  const [buttonType, setButtonType] = useState("NONE");
+  const [buttonText, setButtonText] = useState("");
+  const [buttonValue, setButtonValue] = useState("");
+  const [phone, setPhone] = useState(
+    numbers.find((n) => n.isDefault)?.whatsapp?.phoneNumberId ||
+      numbers[0]?.whatsapp?.phoneNumberId ||
+      "",
+  );
+  const [saving, setSaving] = useState(false);
   const components = () => {
-    if (auth) return [{ type: "BODY", add_security_recommendation: d.security }, ...(Number(d.expiration) > 0 ? [{ type: "FOOTER", code_expiration_minutes: Number(d.expiration) }] : []), { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: d.otpType, ...(d.otpType !== "COPY_CODE" ? { supported_apps: [{ package_name: d.packageName, signature_hash: d.signatureHash }] } : {}) }] }];
-    const body: any = { type: "BODY", text: d.body, ...(ex(d.body, d.examples) ? { example: ex(d.body, d.examples) } : {}) }; const result: any[] = [];
-    if (d.header === "TEXT") result.push({ type: "HEADER", format: "TEXT", text: d.headerText }); else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(d.header)) result.push({ type: "HEADER", format: d.header, example: { header_handle: [d.headerHandle] } }); else if (d.header === "LOCATION") result.push({ type: "HEADER", format: "LOCATION" });
-    result.push(body);
-    if (d.mode === "LIMITED_TIME_OFFER") result.push({ type: "LIMITED_TIME_OFFER", limited_time_offer: { text: d.offerText, has_expiration: Boolean(d.expiration) } });
-    if (d.mode === "MEDIA_CAROUSEL") result.push({ type: "CAROUSEL", cards: Array.from({ length: Math.max(2, Math.min(10, Number(d.cardCount) || 2)) }, () => ({ components: [{ type: "HEADER", format: d.header === "NONE" ? "IMAGE" : d.header }, { type: "BUTTONS", buttons: [{ type: "URL", text: "Shop now", url: "https://example.com" }] }] })) });
-    if (d.mode === "PRODUCT_CAROUSEL") result.push({ type: "CAROUSEL", cards: Array.from({ length: Math.max(2, Math.min(10, Number(d.cardCount) || 2)) }, () => ({ components: [{ type: "HEADER", format: "PRODUCT" }, { type: "BUTTONS", buttons: [{ type: "SPM" }] }] })) });
-    if (d.mode === "SINGLE_PRODUCT") result.push({ type: "HEADER", format: "PRODUCT" }, { type: "BUTTONS", buttons: [{ type: "SPM" }] });
-    if (d.mode === "MULTI_PRODUCT") result.push({ type: "BUTTONS", buttons: [{ type: "MPM" }] });
-    if (!specialized || d.mode === "COUPON_CODE") result.push({ type: "BUTTONS", buttons: [{ type: "COPY_CODE", example: d.coupon }] });
-    if (d.footer && d.mode !== "LIMITED_TIME_OFFER") result.push({ type: "FOOTER", text: d.footer });
+    const result: any[] = [];
+    if (header !== "NONE")
+      result.push({
+        type: "HEADER",
+        format: header,
+        ...(header === "TEXT" ? { text: "Header" } : {}),
+      });
+    result.push({ type: "BODY", text: body });
+    if (footer) result.push({ type: "FOOTER", text: footer });
+    if (buttonType !== "NONE")
+      result.push({
+        type: "BUTTONS",
+        buttons: [
+          {
+            type: buttonType,
+            text: buttonText,
+            ...(buttonType === "URL"
+              ? { url: buttonValue }
+              : buttonType === "PHONE_NUMBER"
+                ? { phone_number: buttonValue }
+                : {}),
+          },
+        ],
+      });
     return result;
   };
-  const saveDraft = async () => { setBusy(true); try { await templatesApi.saveDraft({ name: d.name || "untitled", language: d.language, category: d.category, phoneNumberId: phone, components: components() }); toast.success("Draft saved"); } catch (e) { toast.error(e instanceof Error ? e.message : "Draft save failed"); } finally { setBusy(false); } };
-  const submit = async () => { if (!d.name || (!auth && !d.body)) return toast.error("Name and body are required"); if (specialized && d.mode !== "COUPON_CODE" && ["IMAGE", "VIDEO", "DOCUMENT"].includes(d.header) && !d.headerHandle) return toast.error("Upload the header media first"); setBusy(true); try { await templatesApi.create({ phoneNumberId: phone, name: d.name, language: d.language, category: d.category, parameter_format: "positional", components: components() }); toast.success("Submitted to Meta for review"); setD(empty()); } catch (e) { toast.error(e instanceof Error ? e.message : "Submission failed"); } finally { setBusy(false); } };
-  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]"><section className="space-y-5 rounded-xl border border-border bg-bg-panel p-5"><div className="grid gap-3 sm:grid-cols-3"><div className="sm:col-span-2"><Label>Connected number</Label><Select value={phone} onValueChange={setPhone}><SelectTrigger><SelectValue placeholder="Choose a number" /></SelectTrigger><SelectContent>{numbers.map((n) => <SelectItem key={n.id} value={n.whatsapp?.phoneNumberId || n.id}>{n.label || n.whatsapp?.phoneNumber || "WhatsApp number"}</SelectItem>)}</SelectContent></Select></div><div><Label>Category</Label><Select value={d.category} onValueChange={(v) => set("category", v as TemplateCategory)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="MARKETING">Marketing</SelectItem><SelectItem value="UTILITY">Utility</SelectItem><SelectItem value="AUTHENTICATION">Authentication</SelectItem></SelectContent></Select></div></div>{d.category === "MARKETING" && <div><Label>Marketing template type</Label><Select value={d.mode} onValueChange={(v) => set("mode", v as Mode)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="CUSTOM">Custom marketing</SelectItem><SelectItem value="COUPON_CODE">Coupon code</SelectItem><SelectItem value="LIMITED_TIME_OFFER">Limited-time offer</SelectItem><SelectItem value="MEDIA_CAROUSEL">Media card carousel</SelectItem><SelectItem value="PRODUCT_CAROUSEL">Product card carousel</SelectItem><SelectItem value="SINGLE_PRODUCT">Single product</SelectItem><SelectItem value="MULTI_PRODUCT">Multi-product</SelectItem></SelectContent></Select></div>}<div className="grid gap-3 sm:grid-cols-2"><div><Label>Template name</Label><Input value={d.name} onChange={(e) => set("name", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))} placeholder="summer_sale" /></div><div><Label>Language</Label><Input value={d.language} onChange={(e) => set("language", e.target.value)} /></div></div>{auth ? <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50/50 p-4"><p className="font-medium">Authentication OTP</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={d.security} onChange={(e) => set("security", e.target.checked)} />Security recommendation</label><Input type="number" min={1} max={90} value={d.expiration} onChange={(e) => set("expiration", e.target.value)} placeholder="Expiration minutes (optional)" /><Select value={d.otpType} onValueChange={(v) => set("otpType", v as ReturnType<typeof empty>["otpType"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="COPY_CODE">Copy code</SelectItem><SelectItem value="ONE_TAP">One-tap autofill</SelectItem><SelectItem value="ZERO_TAP">Zero-tap autofill</SelectItem></SelectContent></Select>{d.otpType !== "COPY_CODE" && <div className="grid gap-2 sm:grid-cols-2"><Input value={d.packageName} onChange={(e) => set("packageName", e.target.value)} placeholder="Package name" /><Input value={d.signatureHash} onChange={(e) => set("signatureHash", e.target.value)} placeholder="Signature hash" /></div>}</div> : <><div><Label>Header</Label><Select value={d.header} onValueChange={(v) => set("header", v as Header)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["NONE", "TEXT", "IMAGE", "VIDEO", "DOCUMENT", "LOCATION"].map((x) => <SelectItem key={x} value={x}>{x === "NONE" ? "No header" : x}</SelectItem>)}</SelectContent></Select>{d.header === "TEXT" && <Input className="mt-2" value={d.headerText} onChange={(e) => set("headerText", e.target.value)} placeholder="Header text" />}{["IMAGE", "VIDEO", "DOCUMENT"].includes(d.header) && <Button className="mt-2" variant="outline" asChild><label><Upload className="mr-2 h-4 w-4" />Upload media<input className="hidden" type="file" onChange={upload} /></label></Button>}</div><div><Label>Body</Label><Textarea value={d.body} onChange={(e) => set("body", e.target.value)} placeholder="Hi {{1}}, discover our offer..." /><Input className="mt-2" value={d.examples} onChange={(e) => set("examples", e.target.value)} placeholder="Variable examples, comma-separated" /></div><Input value={d.footer} onChange={(e) => set("footer", e.target.value)} placeholder="Footer (optional)" />{d.mode === "LIMITED_TIME_OFFER" && <Input value={d.offerText} onChange={(e) => set("offerText", e.target.value)} placeholder="Limited-time offer text" />}{["MEDIA_CAROUSEL", "PRODUCT_CAROUSEL"].includes(d.mode) && <Input type="number" min={2} max={10} value={d.cardCount} onChange={(e) => set("cardCount", e.target.value)} placeholder="Number of cards (2–10)" />}{["COUPON_CODE", "LIMITED_TIME_OFFER"].includes(d.mode) && <Input value={d.coupon} onChange={(e) => set("coupon", e.target.value)} placeholder="Coupon code example" />}</>}</section><aside className="rounded-xl border border-border bg-bg-panel p-5"><p className="font-medium">Template actions</p><p className="mt-2 text-sm text-muted-foreground">Save a server-side draft at any time, then submit it to Meta when ready.</p><div className="mt-5 flex gap-2"><Button variant="outline" className="flex-1" onClick={saveDraft}>Save draft</Button><Button className="flex-1" onClick={submit} disabled={busy || !phone}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit</Button></div><p className="mt-8 text-xs font-medium uppercase text-muted-foreground">Submitted templates</p><div className="mt-2 space-y-2">{submitted.slice(0, 8).map((x) => <div key={`${x.id}-${x.language}`} className="rounded border p-2 text-sm">{x.name}<span className="float-right text-xs text-muted-foreground">{x.status}</span></div>)}</div></aside></div>;
+  const save = async (submit: boolean) => {
+    if (!name.trim() || !body.trim())
+      return toast.error("Template name and body are required");
+    setSaving(true);
+    try {
+      const payload = {
+        phoneNumberId: phone,
+        name,
+        language,
+        category,
+        parameter_format: "positional",
+        components: components(),
+      };
+      if (submit) {
+        await templatesApi.create(payload);
+        toast.success("Template submitted to Meta");
+      } else {
+        await templatesApi.saveDraft(payload);
+        toast.success("Draft saved");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-5 rounded-xl border border-border bg-bg-panel p-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <Label>Connected number</Label>
+            <Select value={phone} onValueChange={setPhone}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a number" />
+              </SelectTrigger>
+              <SelectContent>
+                {numbers.map((n) => (
+                  <SelectItem
+                    key={n.id}
+                    value={n.whatsapp?.phoneNumberId || n.id}
+                  >
+                    {n.label || n.whatsapp?.phoneNumber || "WhatsApp number"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Category</Label>
+            <Select
+              value={category}
+              onValueChange={(v) => setCategory(v as TemplateCategory)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MARKETING">Marketing</SelectItem>
+                <SelectItem value="UTILITY">Utility</SelectItem>
+                <SelectItem value="AUTHENTICATION">Authentication</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) =>
+                setName(
+                  e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+                )
+              }
+            />
+          </div>
+          <div>
+            <Label>Language</Label>
+            <Input
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            />
+          </div>
+        </div>
+        {category === "AUTHENTICATION" ? (
+          <div className="rounded-lg border border-amber-300 p-4 text-sm">
+            Authentication templates use Meta&apos;s OTP body, expiration
+            footer, and OTP button payload. Use the authentication controls in
+            the dedicated auth flow.
+          </div>
+        ) : (
+          <>
+            <div>
+              <Label>Header</Label>
+              <Select value={header} onValueChange={setHeader}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[
+                    "NONE",
+                    "TEXT",
+                    "IMAGE",
+                    "VIDEO",
+                    "DOCUMENT",
+                    "LOCATION",
+                  ].map((x) => (
+                    <SelectItem key={x} value={x}>
+                      {x}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Body</Label>
+              <Textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Your order {{1}} is confirmed."
+              />
+            </div>
+            <div>
+              <Label>Footer</Label>
+              <Input
+                value={footer}
+                onChange={(e) => setFooter(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <Label>Button</Label>
+                <Select value={buttonType} onValueChange={setButtonType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">No button</SelectItem>
+                    <SelectItem value="QUICK_REPLY">Quick reply</SelectItem>
+                    <SelectItem value="URL">Website URL</SelectItem>
+                    <SelectItem value="PHONE_NUMBER">Phone number</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {buttonType !== "NONE" && (
+                <>
+                  <div>
+                    <Label>Label</Label>
+                    <Input
+                      value={buttonText}
+                      onChange={(e) => setButtonText(e.target.value)}
+                    />
+                  </div>
+                  {buttonType !== "QUICK_REPLY" && (
+                    <div>
+                      <Label>{buttonType === "URL" ? "URL" : "Phone"}</Label>
+                      <Input
+                        value={buttonValue}
+                        onChange={(e) => setButtonValue(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      <aside className="h-fit rounded-xl border border-border bg-bg-panel p-6">
+        <p className="font-medium">Template actions</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Save a server-side draft, then submit it to Meta when ready.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => save(false)}
+            disabled={saving}
+          >
+            Save draft
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => save(true)}
+            disabled={saving}
+          >
+            Submit
+          </Button>
+        </div>
+      </aside>
+    </section>
+  );
 }
