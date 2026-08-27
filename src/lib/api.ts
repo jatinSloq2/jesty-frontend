@@ -201,8 +201,10 @@ export const integrationsApi = {
 
 export const templatesApi = {
   list: (phoneNumberId?: string) => request<WhatsappTemplate[]>(`/templates${phoneNumberId ? `?phoneNumberId=${encodeURIComponent(phoneNumberId)}` : ""}`),
+  drafts: () => request<WhatsappTemplate[]>("/templates/drafts"),
+  saveDraft: (payload: Record<string, unknown>) => request<WhatsappTemplate>("/templates/drafts", { method: "POST", body: JSON.stringify(payload) }),
+  deleteDraft: (id: string) => request<null>(`/templates/drafts/${id}`, { method: "DELETE" }),
   create: (payload: Record<string, unknown>) => request<{ id: string; status: string }>('/templates', { method: 'POST', body: JSON.stringify(payload) }),
-  aiDraft: (prompt: string, category: TemplateCategory) => request<WhatsappTemplate>('/templates/ai-draft', { method: 'POST', body: JSON.stringify({ prompt, category }) }),
   uploadHeader: async (file: File, phoneNumberId?: string) => {
     const form = new FormData(); form.set('file', file); if (phoneNumberId) form.set('phoneNumberId', phoneNumberId);
     const headers = new Headers(); const token = getAccessToken(); if (token) headers.set('Authorization', `Bearer ${token}`);
