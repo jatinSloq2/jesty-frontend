@@ -56,7 +56,7 @@ export default function TemplatesPage() {
   };
 
   return (
-    <main className="h-full overflow-y-auto p-6">
+    <main className="flex-1 overflow-y-auto bg-bg-app h-full mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Templates</h1>
