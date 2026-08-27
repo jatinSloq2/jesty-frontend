@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Upload, X } from "lucide-react";
 import { toast } from "@/components/ui/jesty-toast";
 import { templatesApi } from "@/lib/api";
-import type { TemplateCategory, WhatsappIntegration, WhatsappTemplate } from "@/types";
+import type {
+  TemplateCategory,
+  WhatsappIntegration,
+  WhatsappTemplate,
+} from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +42,13 @@ import { Badge } from "@/components/ui/badge";
  * ---------------------------------------------------------------------------
  */
 
-type HeaderFormat = "NONE" | "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT" | "LOCATION";
+type HeaderFormat =
+  | "NONE"
+  | "TEXT"
+  | "IMAGE"
+  | "VIDEO"
+  | "DOCUMENT"
+  | "LOCATION";
 type ButtonType = "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "COPY_CODE" | "FLOW";
 type OtpType = "COPY_CODE" | "ONE_TAP" | "ZERO_TAP";
 
@@ -66,16 +76,28 @@ function uid() {
 }
 
 /** Finds {{1}}/{{name}} tokens in a string — mirrors the backend's extractVariables. */
-function extractVariables(text: string): { positional: number[]; named: string[] } {
+function extractVariables(text: string): {
+  positional: number[];
+  named: string[];
+} {
   const positional = new Set<number>();
   const named = new Set<string>();
   const re = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    if (/^\d+$/.test(m[1])) positional.add(Number(m[1]));
-    else named.add(m[1]);
+    const token = m[1];
+    if (token === undefined) continue;
+
+    if (/^\d+$/.test(token)) {
+      positional.add(Number(token));
+    } else {
+      named.add(token);
+    }
   }
-  return { positional: [...positional].sort((a, b) => a - b), named: [...named] };
+  return {
+    positional: [...positional].sort((a, b) => a - b),
+    named: [...named],
+  };
 }
 
 type Comp = Record<string, unknown>;
@@ -94,7 +116,9 @@ export function TemplateBuilder({
   const [name, setName] = useState("");
   const [language, setLanguage] = useState("en_US");
   const [phone, setPhone] = useState(
-    numbers.find((n) => n.isDefault)?.whatsapp?.phoneNumberId || numbers[0]?.whatsapp?.phoneNumberId || "",
+    numbers.find((n) => n.isDefault)?.whatsapp?.phoneNumberId ||
+      numbers[0]?.whatsapp?.phoneNumberId ||
+      "",
   );
 
   // ---- Header ----
@@ -107,8 +131,12 @@ export function TemplateBuilder({
 
   // ---- Body ----
   const [bodyText, setBodyText] = useState("");
-  const [bodyPositionalExamples, setBodyPositionalExamples] = useState<Record<number, string>>({});
-  const [bodyNamedExamples, setBodyNamedExamples] = useState<Record<string, string>>({});
+  const [bodyPositionalExamples, setBodyPositionalExamples] = useState<
+    Record<number, string>
+  >({});
+  const [bodyNamedExamples, setBodyNamedExamples] = useState<
+    Record<string, string>
+  >({});
 
   // ---- Footer ----
   const [footerText, setFooterText] = useState("");
@@ -121,8 +149,10 @@ export function TemplateBuilder({
   const [copyCodeButtonText, setCopyCodeButtonText] = useState("");
   const [packageName, setPackageName] = useState("");
   const [signatureHash, setSignatureHash] = useState("");
-  const [addSecurityRecommendation, setAddSecurityRecommendation] = useState(true);
-  const [codeExpirationMinutes, setCodeExpirationMinutes] = useState<string>("");
+  const [addSecurityRecommendation, setAddSecurityRecommendation] =
+    useState(true);
+  const [codeExpirationMinutes, setCodeExpirationMinutes] =
+    useState<string>("");
 
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -130,7 +160,11 @@ export function TemplateBuilder({
   const bodyVars = useMemo(() => extractVariables(bodyText), [bodyText]);
   const headerVars = useMemo(() => extractVariables(headerText), [headerText]);
   const parameterFormat: "named" | "positional" | undefined =
-    bodyVars.named.length > 0 ? "named" : bodyVars.positional.length > 0 ? "positional" : undefined;
+    bodyVars.named.length > 0
+      ? "named"
+      : bodyVars.positional.length > 0
+        ? "positional"
+        : undefined;
 
   // -------------------------------------------------------------------------
   // Load an existing draft into the form (this was previously a no-op — the
@@ -149,14 +183,22 @@ export function TemplateBuilder({
 
     const header = comps.find((c) => typeOf(c) === "HEADER");
     if (header) {
-      const format = String(header.format ?? "TEXT").toUpperCase() as HeaderFormat;
+      const format = String(
+        header.format ?? "TEXT",
+      ).toUpperCase() as HeaderFormat;
       setHeaderFormat(format);
       if (format === "TEXT") {
         setHeaderText(String(header.text ?? ""));
-        const ex = (header.example as { header_text?: string[] } | undefined)?.header_text;
+        const ex = (header.example as { header_text?: string[] } | undefined)
+          ?.header_text;
         if (ex?.[0]) setHeaderTextExample(ex[0]);
-      } else if (format === "IMAGE" || format === "VIDEO" || format === "DOCUMENT") {
-        const ex = (header.example as { header_handle?: string[] } | undefined)?.header_handle;
+      } else if (
+        format === "IMAGE" ||
+        format === "VIDEO" ||
+        format === "DOCUMENT"
+      ) {
+        const ex = (header.example as { header_handle?: string[] } | undefined)
+          ?.header_handle;
         if (ex?.[0]) setHeaderHandle(ex[0]);
       }
     } else {
@@ -166,13 +208,27 @@ export function TemplateBuilder({
     const body = comps.find((c) => typeOf(c) === "BODY");
     if (body) {
       setBodyText(String(body.text ?? ""));
-      const namedEx = (body.example as { body_text_named_params?: { param_name: string; example: string }[] } | undefined)?.body_text_named_params;
+      const namedEx = (
+        body.example as
+          | {
+              body_text_named_params?: {
+                param_name: string;
+                example: string;
+              }[];
+            }
+          | undefined
+      )?.body_text_named_params;
       if (namedEx?.length) {
-        setBodyNamedExamples(Object.fromEntries(namedEx.map((p) => [p.param_name, p.example])));
+        setBodyNamedExamples(
+          Object.fromEntries(namedEx.map((p) => [p.param_name, p.example])),
+        );
       }
-      const posEx = (body.example as { body_text?: string[][] } | undefined)?.body_text?.[0];
+      const posEx = (body.example as { body_text?: string[][] } | undefined)
+        ?.body_text?.[0];
       if (posEx?.length) {
-        setBodyPositionalExamples(Object.fromEntries(posEx.map((v, i) => [i + 1, v])));
+        setBodyPositionalExamples(
+          Object.fromEntries(posEx.map((v, i) => [i + 1, v])),
+        );
       }
     }
 
@@ -183,15 +239,20 @@ export function TemplateBuilder({
       if (typeof mins === "number") setCodeExpirationMinutes(String(mins));
     }
 
-    const buttonsComp = comps.find((c) => typeOf(c) === "BUTTONS") as { buttons?: Comp[] } | undefined;
+    const buttonsComp = comps.find((c) => typeOf(c) === "BUTTONS") as
+      | { buttons?: Comp[] }
+      | undefined;
     const rawButtons = buttonsComp?.buttons ?? [];
     if (initialDraft.category === "AUTHENTICATION") {
       const otp = rawButtons[0];
       if (otp) {
         setOtpType((otp.otp_type as OtpType) ?? "COPY_CODE");
-        if (typeof otp.copy_code_button_text === "string") setCopyCodeButtonText(otp.copy_code_button_text);
-        if (typeof otp.package_name === "string") setPackageName(otp.package_name);
-        if (typeof otp.signature_hash === "string") setSignatureHash(otp.signature_hash);
+        if (typeof otp.copy_code_button_text === "string")
+          setCopyCodeButtonText(otp.copy_code_button_text);
+        if (typeof otp.package_name === "string")
+          setPackageName(otp.package_name);
+        if (typeof otp.signature_hash === "string")
+          setSignatureHash(otp.signature_hash);
       }
       if (typeof body?.add_security_recommendation === "boolean") {
         setAddSecurityRecommendation(body.add_security_recommendation);
@@ -203,9 +264,13 @@ export function TemplateBuilder({
           type: String(b.type).toUpperCase() as ButtonType,
           text: String(b.text ?? ""),
           url: typeof b.url === "string" ? b.url : undefined,
-          urlExample: Array.isArray(b.example) ? String(b.example[0] ?? "") : undefined,
-          phone: typeof b.phone_number === "string" ? b.phone_number : undefined,
-          copyCodeExample: typeof b.example === "string" ? b.example : undefined,
+          urlExample: Array.isArray(b.example)
+            ? String(b.example[0] ?? "")
+            : undefined,
+          phone:
+            typeof b.phone_number === "string" ? b.phone_number : undefined,
+          copyCodeExample:
+            typeof b.example === "string" ? b.example : undefined,
           flowId: typeof b.flow_id === "string" ? b.flow_id : undefined,
         })),
       );
@@ -218,7 +283,13 @@ export function TemplateBuilder({
   // max 10 total, max 1 PHONE_NUMBER, max 2 URL, max 1 FLOW, max 1 COPY_CODE.
   // -------------------------------------------------------------------------
   const buttonCounts = useMemo(() => {
-    const counts: Record<ButtonType, number> = { QUICK_REPLY: 0, URL: 0, PHONE_NUMBER: 0, COPY_CODE: 0, FLOW: 0 };
+    const counts: Record<ButtonType, number> = {
+      QUICK_REPLY: 0,
+      URL: 0,
+      PHONE_NUMBER: 0,
+      COPY_CODE: 0,
+      FLOW: 0,
+    };
     for (const b of buttons) counts[b.type]++;
     return counts;
   }, [buttons]);
@@ -235,7 +306,9 @@ export function TemplateBuilder({
     setButtons((prev) => [...prev, { key: uid(), type, text: "" }]);
   }
   function updateButton(key: string, patch: Partial<ButtonState>) {
-    setButtons((prev) => prev.map((b) => (b.key === key ? { ...b, ...patch } : b)));
+    setButtons((prev) =>
+      prev.map((b) => (b.key === key ? { ...b, ...patch } : b)),
+    );
   }
   function removeButton(key: string) {
     setButtons((prev) => prev.filter((b) => b.key !== key));
@@ -252,11 +325,16 @@ export function TemplateBuilder({
     setHeaderHandle("");
     setUploadingHeader(true);
     try {
-      const { handle } = await templatesApi.uploadHeader(file, phone || undefined);
+      const { handle } = await templatesApi.uploadHeader(
+        file,
+        phone || undefined,
+      );
       setHeaderHandle(handle);
       toast.success("Header media uploaded");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Header media upload failed");
+      toast.error(
+        e instanceof Error ? e.message : "Header media upload failed",
+      );
       setHeaderFileName("");
     } finally {
       setUploadingHeader(false);
@@ -272,19 +350,23 @@ export function TemplateBuilder({
     if (category === "AUTHENTICATION") {
       const body: Comp = {
         type: "BODY",
-        ...(addSecurityRecommendation !== undefined ? { add_security_recommendation: addSecurityRecommendation } : {}),
+        ...(addSecurityRecommendation !== undefined
+          ? { add_security_recommendation: addSecurityRecommendation }
+          : {}),
       };
       result.push(body);
 
       if (footerText.trim() || codeExpirationMinutes) {
         const footer: Comp = { type: "FOOTER" };
         const mins = Number(codeExpirationMinutes);
-        if (codeExpirationMinutes && !Number.isNaN(mins)) footer.code_expiration_minutes = mins;
+        if (codeExpirationMinutes && !Number.isNaN(mins))
+          footer.code_expiration_minutes = mins;
         result.push(footer);
       }
 
       const otp: Comp = { type: "OTP", otp_type: otpType };
-      if (otpType === "COPY_CODE" && copyCodeButtonText.trim()) otp.copy_code_button_text = copyCodeButtonText.trim();
+      if (otpType === "COPY_CODE" && copyCodeButtonText.trim())
+        otp.copy_code_button_text = copyCodeButtonText.trim();
       if (otpType === "ONE_TAP" || otpType === "ZERO_TAP") {
         otp.package_name = packageName.trim();
         otp.signature_hash = signatureHash.trim();
@@ -309,30 +391,54 @@ export function TemplateBuilder({
     const body: Comp = { type: "BODY", text: bodyText };
     if (parameterFormat === "named" && bodyVars.named.length > 0) {
       body.example = {
-        body_text_named_params: bodyVars.named.map((n) => ({ param_name: n, example: bodyNamedExamples[n] ?? "" })),
+        body_text_named_params: bodyVars.named.map((n) => ({
+          param_name: n,
+          example: bodyNamedExamples[n] ?? "",
+        })),
       };
-    } else if (parameterFormat === "positional" && bodyVars.positional.length > 0) {
-      body.example = { body_text: [bodyVars.positional.map((n) => bodyPositionalExamples[n] ?? "")] };
+    } else if (
+      parameterFormat === "positional" &&
+      bodyVars.positional.length > 0
+    ) {
+      body.example = {
+        body_text: [
+          bodyVars.positional.map((n) => bodyPositionalExamples[n] ?? ""),
+        ],
+      };
     }
     result.push(body);
 
-    if (footerText.trim()) result.push({ type: "FOOTER", text: footerText.trim() });
+    if (footerText.trim())
+      result.push({ type: "FOOTER", text: footerText.trim() });
 
     if (buttons.length > 0) {
       // Sorted by type so same-type buttons are always grouped together,
       // regardless of the order they were added in — Meta rejects
       // interleaved button types (e.g. URL, QUICK_REPLY, URL).
-      const order: ButtonType[] = ["QUICK_REPLY", "URL", "PHONE_NUMBER", "FLOW", "COPY_CODE"];
-      const sorted = [...buttons].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+      const order: ButtonType[] = [
+        "QUICK_REPLY",
+        "URL",
+        "PHONE_NUMBER",
+        "FLOW",
+        "COPY_CODE",
+      ];
+      const sorted = [...buttons].sort(
+        (a, b) => order.indexOf(a.type) - order.indexOf(b.type),
+      );
       const built = sorted.map((b): Comp => {
         switch (b.type) {
           case "URL": {
             const btn: Comp = { type: "URL", text: b.text, url: b.url ?? "" };
-            if (/{{\s*1\s*}}/.test(b.url ?? "") && b.urlExample?.trim()) btn.example = [b.urlExample.trim()];
+            if (/{{\s*1\s*}}/.test(b.url ?? "") && b.urlExample?.trim())
+              btn.example = [b.urlExample.trim()];
             return btn;
           }
           case "PHONE_NUMBER":
-            return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phone ?? "" };
+            return {
+              type: "PHONE_NUMBER",
+              text: b.text,
+              phone_number: b.phone ?? "",
+            };
           case "COPY_CODE":
             return { type: "COPY_CODE", example: b.copyCodeExample ?? "" };
           case "FLOW":
@@ -355,75 +461,114 @@ export function TemplateBuilder({
   function validate(): string[] {
     const errors: string[] = [];
     if (!name.trim()) errors.push("Template name is required");
-    else if (!/^[a-z0-9_]{1,512}$/.test(name)) errors.push("Name must be lowercase letters, numbers, and underscores only");
-    if (!/^[a-z]{2,3}(_[A-Z]{2})?$/.test(language)) errors.push("Language must look like en, en_US, or pt_BR");
+    else if (!/^[a-z0-9_]{1,512}$/.test(name))
+      errors.push(
+        "Name must be lowercase letters, numbers, and underscores only",
+      );
+    if (!/^[a-z]{2,3}(_[A-Z]{2})?$/.test(language))
+      errors.push("Language must look like en, en_US, or pt_BR");
     if (!phone) errors.push("Choose a connected WhatsApp number");
 
     if (category === "AUTHENTICATION") {
       if (otpType === "ONE_TAP" || otpType === "ZERO_TAP") {
-        if (!packageName.trim()) errors.push("Package name is required for one-tap/zero-tap autofill");
-        if (!signatureHash.trim()) errors.push("Signature hash is required for one-tap/zero-tap autofill");
+        if (!packageName.trim())
+          errors.push("Package name is required for one-tap/zero-tap autofill");
+        if (!signatureHash.trim())
+          errors.push(
+            "Signature hash is required for one-tap/zero-tap autofill",
+          );
       }
       if (codeExpirationMinutes) {
         const mins = Number(codeExpirationMinutes);
-        if (Number.isNaN(mins) || mins < 1 || mins > 90) errors.push("Code expiration must be between 1 and 90 minutes");
+        if (Number.isNaN(mins) || mins < 1 || mins > 90)
+          errors.push("Code expiration must be between 1 and 90 minutes");
       }
       return errors;
     }
 
     if (!bodyText.trim()) errors.push("Body text is required");
-    if (bodyText.length > 1024) errors.push("Body text must be 1024 characters or fewer");
+    if (bodyText.length > 1024)
+      errors.push("Body text must be 1024 characters or fewer");
     if (bodyVars.named.length > 0 && bodyVars.positional.length > 0) {
-      errors.push("Body text mixes named ({{name}}) and numbered ({{1}}) variables — use only one style");
+      errors.push(
+        "Body text mixes named ({{name}}) and numbered ({{1}}) variables — use only one style",
+      );
     }
     if (bodyVars.positional.some((n, i) => n !== i + 1)) {
-      errors.push("Numbered variables must start at {{1}} and be sequential with no gaps");
+      errors.push(
+        "Numbered variables must start at {{1}} and be sequential with no gaps",
+      );
     }
     for (const n of bodyVars.positional) {
-      if (!bodyPositionalExamples[n]?.trim()) errors.push(`Add a sample value for {{${n}}} in the body`);
+      if (!bodyPositionalExamples[n]?.trim())
+        errors.push(`Add a sample value for {{${n}}} in the body`);
     }
     for (const n of bodyVars.named) {
-      if (!bodyNamedExamples[n]?.trim()) errors.push(`Add a sample value for {{${n}}} in the body`);
+      if (!bodyNamedExamples[n]?.trim())
+        errors.push(`Add a sample value for {{${n}}} in the body`);
     }
 
     if (headerFormat === "TEXT") {
-      if (!headerText.trim()) errors.push("Header text is required when a TEXT header is selected");
-      if (headerText.length > 60) errors.push("Header text must be 60 characters or fewer");
+      if (!headerText.trim())
+        errors.push("Header text is required when a TEXT header is selected");
+      if (headerText.length > 60)
+        errors.push("Header text must be 60 characters or fewer");
       if (headerVars.positional.length > 1 || headerVars.named.length > 0) {
         errors.push("Header text supports only a single {{1}} variable");
       }
       if (headerVars.positional.length === 1 && !headerTextExample.trim()) {
         errors.push("Add a sample value for the header's {{1}} variable");
       }
-    } else if (headerFormat === "IMAGE" || headerFormat === "VIDEO" || headerFormat === "DOCUMENT") {
-      if (!headerHandle) errors.push(`Upload a ${headerFormat.toLowerCase()} for the header before saving`);
+    } else if (
+      headerFormat === "IMAGE" ||
+      headerFormat === "VIDEO" ||
+      headerFormat === "DOCUMENT"
+    ) {
+      if (!headerHandle)
+        errors.push(
+          `Upload a ${headerFormat.toLowerCase()} for the header before saving`,
+        );
     }
 
-    if (footerText.length > 60) errors.push("Footer text must be 60 characters or fewer");
-    if (/{{\s*[a-zA-Z0-9_]+\s*}}/.test(footerText)) errors.push("Footer text cannot contain variables");
+    if (footerText.length > 60)
+      errors.push("Footer text must be 60 characters or fewer");
+    if (/{{\s*[a-zA-Z0-9_]+\s*}}/.test(footerText))
+      errors.push("Footer text cannot contain variables");
 
     for (const b of buttons) {
       if (b.type !== "COPY_CODE" && (!b.text.trim() || b.text.length > 25)) {
-        errors.push(`${BUTTON_LABELS[b.type]} button needs label text (max 25 characters)`);
+        errors.push(
+          `${BUTTON_LABELS[b.type]} button needs label text (max 25 characters)`,
+        );
       }
       if (b.type === "URL") {
-        if (!b.url || !/^https:\/\/.+/.test(b.url)) errors.push("URL button requires a full https:// link");
-        if (/{{\s*1\s*}}/.test(b.url ?? "") && !b.urlExample?.trim()) errors.push("Add a sample value for the dynamic URL button");
+        if (!b.url || !/^https:\/\/.+/.test(b.url))
+          errors.push("URL button requires a full https:// link");
+        if (/{{\s*1\s*}}/.test(b.url ?? "") && !b.urlExample?.trim())
+          errors.push("Add a sample value for the dynamic URL button");
       }
-      if (b.type === "PHONE_NUMBER" && (!b.phone?.trim() || b.phone.length > 20)) {
+      if (
+        b.type === "PHONE_NUMBER" &&
+        (!b.phone?.trim() || b.phone.length > 20)
+      ) {
         errors.push("Phone button needs a phone number (max 20 characters)");
       }
-      if (b.type === "COPY_CODE" && (!b.copyCodeExample?.trim() || b.copyCodeExample.length > 15)) {
+      if (
+        b.type === "COPY_CODE" &&
+        (!b.copyCodeExample?.trim() || b.copyCodeExample.length > 15)
+      ) {
         errors.push("Copy-code button needs a sample code (max 15 characters)");
       }
-      if (b.type === "FLOW" && !b.flowId?.trim()) errors.push("Flow button needs a Flow ID");
+      if (b.type === "FLOW" && !b.flowId?.trim())
+        errors.push("Flow button needs a Flow ID");
     }
 
     return errors;
   }
 
   async function handleSaveDraft() {
-    if (!name.trim()) return toast.error("Give the template a name before saving a draft");
+    if (!name.trim())
+      return toast.error("Give the template a name before saving a draft");
     setSaving(true);
     try {
       const payload = {
@@ -448,7 +593,9 @@ export function TemplateBuilder({
   async function handleSubmit() {
     const errors = validate();
     if (errors.length > 0) {
-      toast.error(errors[0] + (errors.length > 1 ? ` (+${errors.length - 1} more)` : ""));
+      toast.error(
+        errors[0] + (errors.length > 1 ? ` (+${errors.length - 1} more)` : ""),
+      );
       return;
     }
     setSubmitting(true);
@@ -463,10 +610,13 @@ export function TemplateBuilder({
       };
       await templatesApi.create(payload);
       toast.success("Template submitted to Meta for review");
-      if (draftId) await templatesApi.deleteDraft(draftId).catch(() => undefined);
+      if (draftId)
+        await templatesApi.deleteDraft(draftId).catch(() => undefined);
       router.push("/templates");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Meta rejected this template");
+      toast.error(
+        e instanceof Error ? e.message : "Meta rejected this template",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -484,7 +634,10 @@ export function TemplateBuilder({
               </SelectTrigger>
               <SelectContent>
                 {numbers.map((n) => (
-                  <SelectItem key={n.id} value={n.whatsapp?.phoneNumberId || n.id}>
+                  <SelectItem
+                    key={n.id}
+                    value={n.whatsapp?.phoneNumberId || n.id}
+                  >
                     {n.label || n.whatsapp?.phoneNumber || "WhatsApp number"}
                   </SelectItem>
                 ))}
@@ -493,7 +646,10 @@ export function TemplateBuilder({
           </div>
           <div>
             <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as TemplateCategory)}>
+            <Select
+              value={category}
+              onValueChange={(v) => setCategory(v as TemplateCategory)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -511,32 +667,48 @@ export function TemplateBuilder({
             <Label>Name</Label>
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))}
+              onChange={(e) =>
+                setName(
+                  e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+                )
+              }
               placeholder="order_shipped"
             />
           </div>
           <div>
             <Label>Language</Label>
-            <Input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="en_US" />
+            <Input
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              placeholder="en_US"
+            />
           </div>
         </div>
 
         {category === "AUTHENTICATION" ? (
           <div className="space-y-4 border border-border p-4">
             <p className="text-sm text-muted-foreground">
-              Meta writes the body and footer copy for authentication templates automatically — you only configure the
-              one-time-password button below.
+              Meta writes the body and footer copy for authentication templates
+              automatically — you only configure the one-time-password button
+              below.
             </p>
             <div>
               <Label>OTP delivery method</Label>
-              <Select value={otpType} onValueChange={(v) => setOtpType(v as OtpType)}>
+              <Select
+                value={otpType}
+                onValueChange={(v) => setOtpType(v as OtpType)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="COPY_CODE">Copy code</SelectItem>
-                  <SelectItem value="ONE_TAP">One-tap autofill (Android)</SelectItem>
-                  <SelectItem value="ZERO_TAP">Zero-tap autofill (Android)</SelectItem>
+                  <SelectItem value="ONE_TAP">
+                    One-tap autofill (Android)
+                  </SelectItem>
+                  <SelectItem value="ZERO_TAP">
+                    Zero-tap autofill (Android)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -554,11 +726,19 @@ export function TemplateBuilder({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label>Android package name</Label>
-                  <Input value={packageName} onChange={(e) => setPackageName(e.target.value)} placeholder="com.your.app" />
+                  <Input
+                    value={packageName}
+                    onChange={(e) => setPackageName(e.target.value)}
+                    placeholder="com.your.app"
+                  />
                 </div>
                 <div>
                   <Label>APK signature hash</Label>
-                  <Input value={signatureHash} onChange={(e) => setSignatureHash(e.target.value)} placeholder="e.g. from apksigner" />
+                  <Input
+                    value={signatureHash}
+                    onChange={(e) => setSignatureHash(e.target.value)}
+                    placeholder="e.g. from apksigner"
+                  />
                 </div>
               </div>
             )}
@@ -566,9 +746,14 @@ export function TemplateBuilder({
               <Checkbox
                 id="add-security-recommendation"
                 checked={addSecurityRecommendation}
-                onCheckedChange={(v) => setAddSecurityRecommendation(v === true)}
+                onCheckedChange={(v) =>
+                  setAddSecurityRecommendation(v === true)
+                }
               />
-              <Label htmlFor="add-security-recommendation" className="cursor-pointer">
+              <Label
+                htmlFor="add-security-recommendation"
+                className="cursor-pointer"
+              >
                 Add "don't share this code" security line
               </Label>
             </div>
@@ -588,12 +773,24 @@ export function TemplateBuilder({
           <>
             <div>
               <Label>Header</Label>
-              <Select value={headerFormat} onValueChange={(v) => setHeaderFormat(v as HeaderFormat)}>
+              <Select
+                value={headerFormat}
+                onValueChange={(v) => setHeaderFormat(v as HeaderFormat)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(["NONE", "TEXT", "IMAGE", "VIDEO", "DOCUMENT", "LOCATION"] as HeaderFormat[]).map((x) => (
+                  {(
+                    [
+                      "NONE",
+                      "TEXT",
+                      "IMAGE",
+                      "VIDEO",
+                      "DOCUMENT",
+                      "LOCATION",
+                    ] as HeaderFormat[]
+                  ).map((x) => (
                     <SelectItem key={x} value={x}>
                       {x === "NONE" ? "No header" : x}
                     </SelectItem>
@@ -609,7 +806,9 @@ export function TemplateBuilder({
                     placeholder="Order confirmed{{1}}"
                     maxLength={60}
                   />
-                  <p className="text-xs text-muted-foreground">{headerText.length}/60 · at most one {"{{1}}"} variable</p>
+                  <p className="text-xs text-muted-foreground">
+                    {headerText.length}/60 · at most one {"{{1}}"} variable
+                  </p>
                   {headerVars.positional.length === 1 && (
                     <Input
                       value={headerTextExample}
@@ -620,32 +819,47 @@ export function TemplateBuilder({
                 </div>
               )}
 
-              {(headerFormat === "IMAGE" || headerFormat === "VIDEO" || headerFormat === "DOCUMENT") && (
+              {(headerFormat === "IMAGE" ||
+                headerFormat === "VIDEO" ||
+                headerFormat === "DOCUMENT") && (
                 <div className="mt-2 space-y-2">
                   <label className="flex cursor-pointer items-center gap-2 border border-dashed border-border p-3 text-sm text-muted-foreground hover:border-brand hover:text-foreground">
                     <Upload className="h-4 w-4" />
-                    {headerFileName || `Upload a ${headerFormat.toLowerCase()} sample for review`}
+                    {headerFileName ||
+                      `Upload a ${headerFormat.toLowerCase()} sample for review`}
                     <input
                       type="file"
                       className="hidden"
-                      accept={headerFormat === "IMAGE" ? "image/*" : headerFormat === "VIDEO" ? "video/*" : undefined}
-                      onChange={(e) => void onHeaderFileChosen(e.target.files?.[0])}
+                      accept={
+                        headerFormat === "IMAGE"
+                          ? "image/*"
+                          : headerFormat === "VIDEO"
+                            ? "video/*"
+                            : undefined
+                      }
+                      onChange={(e) =>
+                        void onHeaderFileChosen(e.target.files?.[0])
+                      }
                     />
                   </label>
                   {uploadingHeader && (
                     <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Uploading to Meta…
+                      <Loader2 className="h-3 w-3 animate-spin" /> Uploading to
+                      Meta…
                     </p>
                   )}
                   {headerHandle && !uploadingHeader && (
-                    <p className="text-xs text-online-dot">Media ready — this exact file is used for Meta's review.</p>
+                    <p className="text-xs text-online-dot">
+                      Media ready — this exact file is used for Meta's review.
+                    </p>
                   )}
                 </div>
               )}
 
               {headerFormat === "LOCATION" && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  The actual location is sent per-message when this template is used — no text needed here.
+                  The actual location is sent per-message when this template is
+                  used — no text needed here.
                 </p>
               )}
             </div>
@@ -659,23 +873,33 @@ export function TemplateBuilder({
                 maxLength={1024}
                 rows={4}
               />
-              <p className="mt-1 text-xs text-muted-foreground">{bodyText.length}/1024</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {bodyText.length}/1024
+              </p>
 
-              {(bodyVars.positional.length > 0 || bodyVars.named.length > 0) && (
+              {(bodyVars.positional.length > 0 ||
+                bodyVars.named.length > 0) && (
                 <div className="mt-2 space-y-2 border border-border p-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Sample values for Meta&apos;s reviewers
                   </p>
-                  {bodyVars.named.length > 0 && bodyVars.positional.length > 0 && (
-                    <p className="text-xs text-destructive">
-                      Don&apos;t mix {"{{name}}"} and {"{{1}}"} style variables in the same body.
-                    </p>
-                  )}
+                  {bodyVars.named.length > 0 &&
+                    bodyVars.positional.length > 0 && (
+                      <p className="text-xs text-destructive">
+                        Don&apos;t mix {"{{name}}"} and {"{{1}}"} style
+                        variables in the same body.
+                      </p>
+                    )}
                   {bodyVars.positional.map((n) => (
                     <Input
                       key={n}
                       value={bodyPositionalExamples[n] ?? ""}
-                      onChange={(e) => setBodyPositionalExamples((prev) => ({ ...prev, [n]: e.target.value }))}
+                      onChange={(e) =>
+                        setBodyPositionalExamples((prev) => ({
+                          ...prev,
+                          [n]: e.target.value,
+                        }))
+                      }
                       placeholder={`Sample for {{${n}}}`}
                     />
                   ))}
@@ -683,7 +907,12 @@ export function TemplateBuilder({
                     <Input
                       key={n}
                       value={bodyNamedExamples[n] ?? ""}
-                      onChange={(e) => setBodyNamedExamples((prev) => ({ ...prev, [n]: e.target.value }))}
+                      onChange={(e) =>
+                        setBodyNamedExamples((prev) => ({
+                          ...prev,
+                          [n]: e.target.value,
+                        }))
+                      }
                       placeholder={`Sample for {{${n}}}`}
                     />
                   ))}
@@ -693,8 +922,15 @@ export function TemplateBuilder({
 
             <div>
               <Label>Footer</Label>
-              <Input value={footerText} onChange={(e) => setFooterText(e.target.value)} maxLength={60} placeholder="Optional" />
-              <p className="mt-1 text-xs text-muted-foreground">{footerText.length}/60 · no variables allowed</p>
+              <Input
+                value={footerText}
+                onChange={(e) => setFooterText(e.target.value)}
+                maxLength={60}
+                placeholder="Optional"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {footerText.length}/60 · no variables allowed
+              </p>
             </div>
 
             <div>
@@ -702,32 +938,50 @@ export function TemplateBuilder({
                 <Label>Buttons</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={buttons.length >= 10}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={buttons.length >= 10}
+                    >
                       <Plus className="mr-1 h-3.5 w-3.5" /> Add button
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {(Object.keys(BUTTON_LABELS) as ButtonType[]).map((type) => (
-                      <DropdownMenuItem key={type} disabled={!canAddButtonType[type]} onClick={() => addButton(type)}>
-                        {BUTTON_LABELS[type]}
-                      </DropdownMenuItem>
-                    ))}
+                    {(Object.keys(BUTTON_LABELS) as ButtonType[]).map(
+                      (type) => (
+                        <DropdownMenuItem
+                          key={type}
+                          disabled={!canAddButtonType[type]}
+                          onClick={() => addButton(type)}
+                        >
+                          {BUTTON_LABELS[type]}
+                        </DropdownMenuItem>
+                      ),
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
               {buttons.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No buttons — up to 10 allowed, mixed types grouped automatically.</p>
+                <p className="text-xs text-muted-foreground">
+                  No buttons — up to 10 allowed, mixed types grouped
+                  automatically.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {buttons.map((b) => (
-                    <div key={b.key} className="flex flex-wrap items-center gap-2 border border-border p-2">
+                    <div
+                      key={b.key}
+                      className="flex flex-wrap items-center gap-2 border border-border p-2"
+                    >
                       <Badge variant="secondary">{BUTTON_LABELS[b.type]}</Badge>
                       {b.type !== "COPY_CODE" && (
                         <Input
                           className="w-40"
                           value={b.text}
-                          onChange={(e) => updateButton(b.key, { text: e.target.value })}
+                          onChange={(e) =>
+                            updateButton(b.key, { text: e.target.value })
+                          }
                           placeholder="Button label"
                           maxLength={25}
                         />
@@ -737,14 +991,20 @@ export function TemplateBuilder({
                           <Input
                             className="w-56"
                             value={b.url ?? ""}
-                            onChange={(e) => updateButton(b.key, { url: e.target.value })}
+                            onChange={(e) =>
+                              updateButton(b.key, { url: e.target.value })
+                            }
                             placeholder="https://example.com/{{1}}"
                           />
                           {/{{\s*1\s*}}/.test(b.url ?? "") && (
                             <Input
                               className="w-40"
                               value={b.urlExample ?? ""}
-                              onChange={(e) => updateButton(b.key, { urlExample: e.target.value })}
+                              onChange={(e) =>
+                                updateButton(b.key, {
+                                  urlExample: e.target.value,
+                                })
+                              }
                               placeholder="Sample suffix"
                             />
                           )}
@@ -754,7 +1014,9 @@ export function TemplateBuilder({
                         <Input
                           className="w-40"
                           value={b.phone ?? ""}
-                          onChange={(e) => updateButton(b.key, { phone: e.target.value })}
+                          onChange={(e) =>
+                            updateButton(b.key, { phone: e.target.value })
+                          }
                           placeholder="+14155551234"
                           maxLength={20}
                         />
@@ -763,7 +1025,11 @@ export function TemplateBuilder({
                         <Input
                           className="w-40"
                           value={b.copyCodeExample ?? ""}
-                          onChange={(e) => updateButton(b.key, { copyCodeExample: e.target.value })}
+                          onChange={(e) =>
+                            updateButton(b.key, {
+                              copyCodeExample: e.target.value,
+                            })
+                          }
                           placeholder="Sample code"
                           maxLength={15}
                         />
@@ -772,11 +1038,18 @@ export function TemplateBuilder({
                         <Input
                           className="w-48"
                           value={b.flowId ?? ""}
-                          onChange={(e) => updateButton(b.key, { flowId: e.target.value })}
+                          onChange={(e) =>
+                            updateButton(b.key, { flowId: e.target.value })
+                          }
                           placeholder="Flow ID"
                         />
                       )}
-                      <Button size="icon" variant="ghost" className="ml-auto" onClick={() => removeButton(b.key)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="ml-auto"
+                        onClick={() => removeButton(b.key)}
+                      >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -797,30 +1070,51 @@ export function TemplateBuilder({
                 <>
                   <p>*000000* is your verification code.</p>
                   {addSecurityRecommendation && (
-                    <p className="text-xs text-muted-foreground">For your security, do not share this code.</p>
+                    <p className="text-xs text-muted-foreground">
+                      For your security, do not share this code.
+                    </p>
                   )}
                   {codeExpirationMinutes && (
-                    <p className="text-xs text-muted-foreground">This code expires in {codeExpirationMinutes} minutes.</p>
+                    <p className="text-xs text-muted-foreground">
+                      This code expires in {codeExpirationMinutes} minutes.
+                    </p>
                   )}
                   <div className="mt-2 border-t border-border pt-2 text-center text-xs font-medium text-brand-strong">
-                    {otpType === "COPY_CODE" ? copyCodeButtonText || "Copy code" : "Autofill"}
+                    {otpType === "COPY_CODE"
+                      ? copyCodeButtonText || "Copy code"
+                      : "Autofill"}
                   </div>
                 </>
               ) : (
                 <>
-                  {headerFormat === "TEXT" && headerText && <p className="font-semibold">{headerText}</p>}
-                  {(headerFormat === "IMAGE" || headerFormat === "VIDEO" || headerFormat === "DOCUMENT") && (
+                  {headerFormat === "TEXT" && headerText && (
+                    <p className="font-semibold">{headerText}</p>
+                  )}
+                  {(headerFormat === "IMAGE" ||
+                    headerFormat === "VIDEO" ||
+                    headerFormat === "DOCUMENT") && (
                     <div className="flex h-24 items-center justify-center border border-dashed border-border text-xs text-muted-foreground">
                       {headerFormat} header
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap">{bodyText || "Your message body will appear here."}</p>
-                  {footerText && <p className="text-xs text-muted-foreground">{footerText}</p>}
+                  <p className="whitespace-pre-wrap">
+                    {bodyText || "Your message body will appear here."}
+                  </p>
+                  {footerText && (
+                    <p className="text-xs text-muted-foreground">
+                      {footerText}
+                    </p>
+                  )}
                   {buttons.length > 0 && (
                     <div className="mt-2 space-y-1 border-t border-border pt-2">
                       {buttons.map((b) => (
-                        <div key={b.key} className="text-center text-xs font-medium text-brand-strong">
-                          {b.type === "COPY_CODE" ? "Copy offer code" : b.text || BUTTON_LABELS[b.type]}
+                        <div
+                          key={b.key}
+                          className="text-center text-xs font-medium text-brand-strong"
+                        >
+                          {b.type === "COPY_CODE"
+                            ? "Copy offer code"
+                            : b.text || BUTTON_LABELS[b.type]}
                         </div>
                       ))}
                     </div>
@@ -833,14 +1127,25 @@ export function TemplateBuilder({
 
         <div>
           <p className="font-medium">Template actions</p>
-          <p className="mt-2 text-sm text-muted-foreground">Save a server-side draft, then submit it to Meta when ready.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Save a server-side draft, then submit it to Meta when ready.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={handleSaveDraft} disabled={saving || submitting}>
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleSaveDraft}
+            disabled={saving || submitting}
+          >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save draft
           </Button>
-          <Button className="flex-1" onClick={handleSubmit} disabled={saving || submitting}>
+          <Button
+            className="flex-1"
+            onClick={handleSubmit}
+            disabled={saving || submitting}
+          >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit
           </Button>
