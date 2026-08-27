@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { profileApi, ApiClientError } from "@/lib/api";
 import type { BusinessProfile } from "@/types";
 import { initials } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 const BUSINESS_VERTICALS: { value: string; label: string }[] = [
   { value: "ALCOHOL", label: "Alcoholic drinks" },
