@@ -9,7 +9,7 @@ import { integrationsApi } from "@/lib/api";
 import { LeftRail } from "@/components/layout/left-rail";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isRefreshing } = useAuth();
   const router = useRouter();
   const setNumbers = useChannelStore((s) => s.setNumbers);
 
@@ -25,7 +25,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .catch(() => setNumbers([]));
   }, [user, setNumbers]);
 
-  if (isLoading || !user) {
+  // isLoading covers the initial "do we have a session" check on mount.
+  // isRefreshing covers a silent access-token refresh later in the
+  // session (proactive, or reactive after a request 401'd) — surface the
+  // same loading screen for both rather than letting the UI flash broken
+  // requests while a refresh is quietly happening underneath it.
+  if (isLoading || isRefreshing || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-bg-app">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

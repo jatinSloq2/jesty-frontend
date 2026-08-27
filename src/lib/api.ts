@@ -33,15 +33,112 @@ class ApiClientError extends Error {
   }
 }
 
+// The access token now lives in memory only (never localStorage). The
+// backend also sets it as an httpOnly `access_token` cookie on login/sso/
+// refresh (see auth.controller.ts#setAuthCookies), which `credentials:
+// "include"` sends automatically on every request below — so this in-memory
+// copy exists purely so we have a raw string to hand to the socket.io
+// handshake (socket.ts#getSocket), which can't read httpOnly cookies.
+let accessToken: string | null = null;
+
 function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem("jesty_access_token");
+  return accessToken;
 }
 
 export function setAccessToken(token: string | null) {
-  if (typeof window === "undefined") return;
-  if (token) window.localStorage.setItem("jesty_access_token", token);
-  else window.localStorage.removeItem("jesty_access_token");
+  accessToken = token;
+}
+
+export type AuthEventName = "refreshing" | "refreshed" | "refresh-failed" | "logged-out";
+export interface AuthEventData {
+  accessToken?: string;
+  expiresIn?: number;
+}
+type AuthListener = (event: AuthEventName, data?: AuthEventData) => void;
+
+// Lets auth-provider.tsx show a loading state while a silent refresh is in
+// flight, reschedule its proactive refresh timer, and react to a session
+// that couldn't be renewed (refresh_token cookie missing/expired) without
+// this module needing to know about React or routing.
+const authListeners = new Set<AuthListener>();
+export function onAuthEvent(listener: AuthListener): () => void {
+  authListeners.add(listener);
+  return () => authListeners.delete(listener);
+}
+function emitAuthEvent(event: AuthEventName, data?: AuthEventData) {
+  authListeners.forEach((listener) => listener(event, data));
+}
+
+// Only one refresh should ever be in flight at a time — several requests
+// can 401 in the same tick (e.g. a burst of parallel calls right as the
+// access token expires), and they must all await the *same* refresh rather
+// than each minting their own.
+let refreshInFlight: Promise<AuthEventData | null> | null = null;
+
+async function performRefresh(): Promise<AuthEventData | null> {
+  emitAuthEvent("refreshing");
+  try {
+    // No Authorization header on purpose — the refresh_token httpOnly
+    // cookie (sent via credentials: "include") is the only credential this
+    // call needs or should use.
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    const body = (await res.json().catch(() => null)) as ApiEnvelope<{
+      accessToken: string;
+      expiresIn: number;
+    }> | null;
+
+    if (!res.ok || !body) {
+      accessToken = null;
+      emitAuthEvent("refresh-failed");
+      return null;
+    }
+
+    accessToken = body.data.accessToken;
+    const data: AuthEventData = { accessToken: body.data.accessToken, expiresIn: body.data.expiresIn };
+    emitAuthEvent("refreshed", data);
+    return data;
+  } catch {
+    accessToken = null;
+    emitAuthEvent("refresh-failed");
+    return null;
+  }
+}
+
+function refreshAccessToken(): Promise<AuthEventData | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+// Shared by request(), requestPaginated(), and the raw multipart uploads
+// below: attach whatever access token we have, and on a 401 (expired
+// token — anything else, like a bad password, never reaches this path)
+// refresh once via the httpOnly refresh cookie and retry exactly once.
+// Auth endpoints themselves are excluded to avoid ever looping.
+async function authorizedFetch(path: string, init: RequestInit, isRetry = false): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+
+  if (res.status === 401 && !isRetry && !path.startsWith("/auth/")) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed?.accessToken) {
+      const retryHeaders = new Headers(init.headers);
+      retryHeaders.set("Authorization", `Bearer ${refreshed.accessToken}`);
+      return authorizedFetch(path, { ...init, headers: retryHeaders }, true);
+    }
+    emitAuthEvent("logged-out");
+  }
+
+  return res;
 }
 
 async function request<T>(
@@ -53,16 +150,10 @@ async function request<T>(
   if (!finalHeaders.has("Content-Type") && rest.body && typeof rest.body === "string") {
     finalHeaders.set("Content-Type", "application/json");
   }
-  if (auth) {
-    const token = getAccessToken();
-    if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
-  }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...rest,
-    headers: finalHeaders,
-    credentials: "include",
-  });
+  const res = auth
+    ? await authorizedFetch(path, { ...rest, headers: finalHeaders })
+    : await fetch(`${API_URL}${path}`, { ...rest, headers: finalHeaders, credentials: "include" });
 
   const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
 
@@ -75,10 +166,7 @@ async function request<T>(
 // The plain HTTP client above returns .data directly; some callers need
 // pagination too, so this variant returns the full envelope.
 async function requestPaginated<T>(path: string, init: RequestInit = {}): Promise<PaginatedEnvelope<T>> {
-  const token = getAccessToken();
-  const headers = new Headers(init.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+  const res = await authorizedFetch(path, init);
   const body = (await res.json()) as PaginatedEnvelope<T>;
   if (!res.ok) throw new ApiClientError(res.status, body.message ?? "Request failed");
   return body;
@@ -102,6 +190,15 @@ export const authApi = {
     }),
   me: () => request<{ user: AuthUser }>("/auth/me"),
   logout: () => request<null>("/auth/logout", { method: "POST" }),
+  // Redeems the httpOnly refresh_token cookie for a new access token.
+  // Used on app mount (to restore a session after a hard refresh, since
+  // the access token itself is memory-only and doesn't survive one) and
+  // internally by authorizedFetch() whenever a request 401s mid-session.
+  refresh: async () => {
+    const data = await refreshAccessToken();
+    if (!data) throw new ApiClientError(401, "Session expired");
+    return data;
+  },
 };
 
 export const conversationsApi = {
@@ -154,17 +251,10 @@ export const messagesApi = {
     if (payload.filename) form.set("filename", payload.filename);
     if (payload.replyToMessageId) form.set("replyToMessageId", payload.replyToMessageId);
 
-    const token = getAccessToken();
     const headers = new Headers();
-    if (token) headers.set("Authorization", `Bearer ${token}`);
     headers.set("jesty-backend-service-token", SERVICE_TOKEN);
 
-    const res = await fetch(`${API_URL}/messages/upload`, {
-      method: "POST",
-      headers,
-      body: form,
-      credentials: "include",
-    });
+    const res = await authorizedFetch("/messages/upload", { method: "POST", headers, body: form });
     const body = (await res.json()) as ApiEnvelope<Message>;
     if (!res.ok) throw new ApiClientError(res.status, body.message ?? "Upload failed");
     return body.data;
@@ -207,8 +297,7 @@ export const templatesApi = {
   create: (payload: Record<string, unknown>) => request<{ id: string; status: string }>('/templates', { method: 'POST', body: JSON.stringify(payload) }),
   uploadHeader: async (file: File, phoneNumberId?: string) => {
     const form = new FormData(); form.set('file', file); if (phoneNumberId) form.set('phoneNumberId', phoneNumberId);
-    const headers = new Headers(); const token = getAccessToken(); if (token) headers.set('Authorization', `Bearer ${token}`);
-    const res = await fetch(`${API_URL}/templates/header-media`, { method: 'POST', headers, body: form, credentials: 'include' });
+    const res = await authorizedFetch('/templates/header-media', { method: 'POST', body: form });
     const body = await res.json() as ApiEnvelope<{ handle: string }>;
     if (!res.ok) throw new ApiClientError(res.status, body.message ?? 'Template media upload failed');
     return body.data;
@@ -225,17 +314,10 @@ export const profileApi = {
     form.set("file", file);
     if (phoneNumberId) form.set("phoneNumberId", phoneNumberId);
 
-    const token = getAccessToken();
     const headers = new Headers();
-    if (token) headers.set("Authorization", `Bearer ${token}`);
     headers.set("jesty-backend-service-token", SERVICE_TOKEN);
 
-    const res = await fetch(`${API_URL}/profile/picture`, {
-      method: "POST",
-      headers,
-      body: form,
-      credentials: "include",
-    });
+    const res = await authorizedFetch("/profile/picture", { method: "POST", headers, body: form });
     const body = (await res.json()) as ApiEnvelope<BusinessProfile>;
     if (!res.ok) throw new ApiClientError(res.status, body.message ?? "Upload failed");
     return body.data;
