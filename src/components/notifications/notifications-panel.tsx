@@ -66,6 +66,7 @@ export function NotificationsPanel() {
       setToken(deviceToken);
       toast.success("Push notifications enabled");
     } catch (err) {
+      console.error("Push registration failed:", err); // add this line
       toast.error(err instanceof ApiClientError ? err.message : "Couldn't register for notifications");
     } finally {
       setBusy(false);
