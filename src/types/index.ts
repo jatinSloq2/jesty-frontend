@@ -187,3 +187,14 @@ export interface BusinessProfile {
   websites?: string[];
   vertical?: string;
 }
+
+export type TemplateCategory = "MARKETING" | "UTILITY" | "AUTHENTICATION";
+export interface WhatsappTemplate {
+  id?: string;
+  name: string;
+  language: string;
+  category: TemplateCategory;
+  status?: string;
+  components: Record<string, unknown>[];
+  rejected_reason?: string;
+}

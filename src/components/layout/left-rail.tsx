@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Users, Bell } from "lucide-react";
+import { MessageSquare, Users, Bell, PanelsTopLeft } from "lucide-react";
 import gsap from "gsap";
 import { useAuth } from "@/providers/auth-provider";
 import { useGsapContext } from "@/hooks/use-gsap-context";
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/inbox", label: "Chats", icon: MessageSquare },
   { href: "/contacts", label: "Contacts, tags & groups", icon: Users },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/templates", label: "WhatsApp templates", icon: PanelsTopLeft },
 ];
 
 export function LeftRail() {

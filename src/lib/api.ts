@@ -13,6 +13,8 @@ import type {
   PaginatedEnvelope,
   Tag,
   WhatsappIntegration,
+  WhatsappTemplate,
+  TemplateCategory,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
@@ -195,6 +197,20 @@ export const integrationsApi = {
   update: (id: string, payload: Partial<{ label: string; isActive: boolean; isDefault: boolean; accessToken: string; appSecret: string; tokenType: "temporary" | "permanent" }>) =>
     request<WhatsappIntegration>(`/integrations/whatsapp/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   remove: (id: string) => request<null>(`/integrations/whatsapp/${id}`, { method: "DELETE" }),
+};
+
+export const templatesApi = {
+  list: (phoneNumberId?: string) => request<WhatsappTemplate[]>(`/templates${phoneNumberId ? `?phoneNumberId=${encodeURIComponent(phoneNumberId)}` : ""}`),
+  create: (payload: Record<string, unknown>) => request<{ id: string; status: string }>('/templates', { method: 'POST', body: JSON.stringify(payload) }),
+  aiDraft: (prompt: string, category: TemplateCategory) => request<WhatsappTemplate>('/templates/ai-draft', { method: 'POST', body: JSON.stringify({ prompt, category }) }),
+  uploadHeader: async (file: File, phoneNumberId?: string) => {
+    const form = new FormData(); form.set('file', file); if (phoneNumberId) form.set('phoneNumberId', phoneNumberId);
+    const headers = new Headers(); const token = getAccessToken(); if (token) headers.set('Authorization', `Bearer ${token}`);
+    const res = await fetch(`${API_URL}/templates/header-media`, { method: 'POST', headers, body: form, credentials: 'include' });
+    const body = await res.json() as ApiEnvelope<{ handle: string }>;
+    if (!res.ok) throw new ApiClientError(res.status, body.message ?? 'Template media upload failed');
+    return body.data;
+  },
 };
 
 export const profileApi = {
